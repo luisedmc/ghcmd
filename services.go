@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -14,9 +15,7 @@ func GithubClient(tokenClient *http.Client) *github.Client {
 	return githubClient
 }
 
-func SearchRepository(githubClient *github.Client, user string, repositoryName string) *Repository {
-	ctx := context.Background()
-
+func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) *Repository {
 	repository, _, err := githubClient.Repositories.Get(ctx, user, repositoryName)
 	if err != nil {
 		log.Printf("Problem in getting repository information %v\n", err)
@@ -29,4 +28,18 @@ func SearchRepository(githubClient *github.Client, user string, repositoryName s
 	}
 
 	return repositoryData
+}
+
+func CreateRepository(ctx context.Context, repoName string, isPrivate bool, githubClient *github.Client) {
+	newRepository := &github.Repository{
+		Name:    github.String(repoName),
+		Private: github.Bool(isPrivate),
+	}
+
+	_, _, err := githubClient.Repositories.Create(ctx, "", newRepository)
+	if err != nil {
+		log.Println(err)
+	} else {
+		fmt.Println("Repository created successfully!")
+	}
 }
