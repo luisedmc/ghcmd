@@ -1,17 +1,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"log"
-	"os"
-
-	"github.com/google/go-github/v53/github"
 )
 
 func main() {
-	ctx := context.Background()
-
 	// TokenSource
 	ts, err := Token()
 	if err != nil {
@@ -19,26 +13,21 @@ func main() {
 	}
 
 	// TokenClient
-	tc := TokenClient(ctx, ts)
+	tc := TokenClient(ts)
 
-	client := github.NewClient(tc)
+	client := GithubClient(tc)
 
-	user := "luisedmc"
+	var (
+		user     string
+		repoName string
+	)
+	fmt.Scanf("%s", &user)
+	fmt.Scanf("%s", &repoName)
 
-	// searching "dsa" repo in "luisedmc" user
-	repo, _, err := client.Repositories.Get(ctx, user, "dsa")
-	if err != nil {
-		fmt.Printf("Problem in getting repository information %v\n", err)
-		os.Exit(1)
-	}
+	// searching "repoName" repo in "user"
+	repo := SearchRepository(client, user, repoName)
 
-	repoData := &Repository{
-		FullName:    *repo.FullName,
-		Description: *repo.Description,
-		URL:         *repo.Owner.HTMLURL,
-	}
-
-	fmt.Println("Owner: ", repoData.FullName)
-	fmt.Println("Repo Description: ", repoData.Description)
-	fmt.Println("Repo URL: ", repoData.URL)
+	fmt.Println("Owner: ", repo.FullName)
+	fmt.Println("Repo Description: ", repo.Description)
+	fmt.Println("Repo URL: ", repo.URL)
 }
