@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 )
 
 func main() {
+	ctx := context.Background()
+
 	// TokenSource
 	ts, err := Token()
 	if err != nil {
@@ -13,21 +16,12 @@ func main() {
 	}
 
 	// TokenClient
-	tc := TokenClient(ts)
-
+	tc := TokenClient(ctx, ts)
 	client := GithubClient(tc)
 
-	var (
-		user     string
-		repoName string
-	)
-	fmt.Scanf("%s", &user)
+	var repoName string
 	fmt.Scanf("%s", &repoName)
 
-	// searching "repoName" repo in "user"
-	repo := SearchRepository(client, user, repoName)
-
-	fmt.Println("Owner: ", repo.FullName)
-	fmt.Println("Repo Description: ", repo.Description)
-	fmt.Println("Repo URL: ", repo.URL)
+	// CreateRepository(ctx, repoName, true, client)
+	SearchRepository(ctx, client, "luisedmc", repoName)
 }
