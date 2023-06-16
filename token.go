@@ -30,8 +30,6 @@ func Token() (oauth2.TokenSource, error) {
 	return tokenSource, nil
 }
 
-func TokenClient(ts oauth2.TokenSource) *http.Client {
-	ctx := context.Background()
-
+func TokenClient(ctx context.Context, ts oauth2.TokenSource) *http.Client {
 	return oauth2.NewClient(ctx, ts)
 }
