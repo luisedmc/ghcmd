@@ -15,7 +15,7 @@ func GithubClient(tokenClient *http.Client) *github.Client {
 	return githubClient
 }
 
-func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) *Repository {
+func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) {
 	repository, _, err := githubClient.Repositories.Get(ctx, user, repositoryName)
 	if err != nil {
 		log.Printf("Problem in getting repository information %v\n", err)
@@ -27,7 +27,9 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 		URL:         *repository.HTMLURL,
 	}
 
-	return repositoryData
+	fmt.Printf("Repository Owner URL: %s\n", repositoryData.FullName)
+	fmt.Printf("Repository Description: %s\n", repositoryData.Description)
+	fmt.Printf("Repository URL: %s\n", repositoryData.URL)
 }
 
 func CreateRepository(ctx context.Context, repoName string, isPrivate bool, githubClient *github.Client) {
