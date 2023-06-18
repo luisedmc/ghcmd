@@ -3,7 +3,9 @@ module github.com/luisedmc/ghcmd
 go 1.20
 
 require (
+	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
+	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/google/go-github/v53 v53.1.0
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/oauth2 v0.9.0
@@ -11,6 +13,7 @@ require (
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230528122434-6f98819771a1 // indirect
+	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
