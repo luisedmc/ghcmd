@@ -1,221 +1,89 @@
 package main
 
 import (
-	"fmt"
-	"io"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	focusedStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
-	cursorStyle       = focusedStyle.Copy()
-	noStyle           = lipgloss.NewStyle()
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
+	titleStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("#00FFA2"))
+
+	viewStyle = lipgloss.NewStyle().
+			Padding(1, 2)
+
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#00ff04"}).
+		// Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"}).
+		Margin(1, 2)
 )
 
 type model struct {
-	list         list.Model
-	cursor       int
-	selected     map[int]struct{}
-	focusIndex   int
-	searchInputs []textinput.Model
-	createInputs []textinput.Model
+	Help   help.Model
+	Keys   KeyMap
+	Status int
 }
 
-type item string
-
-type itemDelegate struct{}
-
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
-	if !ok {
-		return
-	}
-
-	str := fmt.Sprintf("%d. %s", index+1, i)
-
-	fn := itemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
-		}
-	}
-
-	fmt.Fprint(w, fn(str))
-}
-
+// StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	opt := []list.Item{
-		item("Search repository"),
-		item("Create repository"),
-	}
-
-	l := list.New(opt, itemDelegate{}, 20, 14)
-
 	return model{
-		list:     l,
-		selected: make(map[int]struct{}),
+		Keys: KeyMap{
+			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
+		},
+		Help: help.New(),
 	}
 }
 
-func (i item) FilterValue() string { return "" }
-
-func (m model) showSearchInputs() model {
-	m.searchInputs = make([]textinput.Model, 2)
-
-	for i := range m.searchInputs {
-		t := textinput.New()
-		t.Cursor.Style = cursorStyle
-
-		switch i {
-		case 0:
-			t.Placeholder = "Github username"
-			t.Focus()
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
-		case 1:
-			t.Placeholder = "Repository name"
-		}
-
-		m.searchInputs[i] = t
-	}
-
-	return m
-}
-
-func (m model) showCreateInputs() model {
-	m.createInputs = make([]textinput.Model, 1)
-
-	for i := range m.createInputs {
-		t := textinput.New()
-		t.Cursor.Style = cursorStyle
-
-		switch i {
-		case 0:
-			t.Placeholder = "Repository name"
-			t.Focus()
-			t.PromptStyle = focusedStyle
-			t.TextStyle = focusedStyle
-		case 1:
-			t.Placeholder = "Public or Privat"
-		}
-
-		m.createInputs[i] = t
-	}
-
-	return m
-}
-
+// Init run any intial IO on program start
 func (m model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handle IO and commands
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
-
-		case "enter":
-			switch m.cursor {
-			case 0:
-				return m.showSearchInputs(), nil
-			case 1:
-				return m.showCreateInputs(), nil
-			}
-
-		case "up", "k":
-			m.cursor--
-			if m.cursor < 0 {
-				m.cursor = 0
-			}
-
-		case "down", "j":
-			m.cursor++
-			if m.cursor > len(m.list.Items())-1 {
-				m.cursor = len(m.list.Items()) - 1
-			}
-
-		case "tab":
-			if len(m.searchInputs) == 0 {
-				return m, nil
-			}
-			m.focusIndex++
-
-			if m.focusIndex >= len(m.searchInputs) {
-				m.focusIndex = 0
-			}
-
-			cmds := make([]tea.Cmd, len(m.searchInputs))
-			for i := 0; i < len(m.searchInputs); i++ {
-				if i == m.focusIndex {
-					cmds[i] = m.searchInputs[i].Focus()
-					m.searchInputs[i].PromptStyle = focusedStyle
-					m.searchInputs[i].TextStyle = focusedStyle
-					continue
-				}
-				m.searchInputs[i].Blur()
-				m.searchInputs[i].PromptStyle = noStyle
-				m.searchInputs[i].TextStyle = noStyle
-
-			}
-
-			return m, tea.Batch(cmds...)
-		}
-	}
-
-	for i, input := range m.searchInputs {
-		var cmd tea.Cmd
-		m.searchInputs[i], cmd = input.Update(msg)
-		if cmd != nil {
-			return m, cmd
-		}
-	}
-
-	for i, input := range m.createInputs {
-		var cmd tea.Cmd
-		m.createInputs[i], cmd = input.Update(msg)
-		if cmd != nil {
-			return m, cmd
 		}
 	}
 
 	return m, nil
 }
 
+func (m model) statusView() string {
+	var (
+		status string
+		keys   string
+	)
+
+	switch m.Status {
+	default:
+		status = "Ready"
+		keys = m.Help.View(m.Keys)
+	}
+
+	return statusBarStyle.Render(status, keys)
+}
+
+// View return the text UI to be output to the terminal
 func (m model) View() string {
-	s := "What you want to do?\n\n"
+	var sb strings.Builder
 
-	for i, choice := range m.list.Items() {
-		cursor := " "
-		if m.cursor == i {
-			cursor = ">"
-		}
-		s += fmt.Sprintf("%s %s\n", cursor, choice)
-	}
+	sb.WriteString(titleStyle.Render("Github CMD"))
+	sb.WriteRune('\n')
+	sb.WriteString("Welcome to Github CMD, a TUI for Github\n")
 
-	if m.cursor == 0 && len(m.searchInputs) > 0 {
-		for i := range m.searchInputs {
-			s += "\n" + m.searchInputs[i].View() + "\n"
-		}
-	} else if m.cursor == 1 && len(m.createInputs) > 0 {
-		for i := range m.createInputs {
-			s += "\n" + m.createInputs[i].View() + "\n"
-		}
-	}
-
-	s += "\nPress q to quit.\n"
-
-	return s
+	return lipgloss.JoinVertical(lipgloss.Left,
+		lipgloss.JoinHorizontal(lipgloss.Top, viewStyle.Render(sb.String())),
+		m.statusView(),
+	)
 }
