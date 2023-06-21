@@ -18,76 +18,75 @@ var (
 			Align(lipgloss.Center).
 			Foreground(lipgloss.Color("#00FFA2"))
 
-	statusBarForegroundSucessColor = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
-	statusBarBackgroundSucessColor = lipgloss.AdaptiveColor{Light: "#178009", Dark: "#178009"}
+	statusBarForegroundSuccessStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
+	statusBarBackgroundSuccessStyle = lipgloss.AdaptiveColor{Light: "#178009", Dark: "#178009"}
 
-	statusBarForegroundErrorColor = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
-	statusBarBackgroundErrorColor = lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"}
+	statusBarForegroundErrorStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
+	statusBarBackgroundErrorStyle = lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"}
 
-	statusBarForegroundColor = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"}
-	statusBarBackgroundColor = lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"}
+	statusBarForegroundStyle = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"}
+	statusBarBackgroundStyle = lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"}
 )
 
 type model struct {
 	height     int
-	Help       help.Model
-	Keys       KeyMap
-	Status     int
-	StatusText string
-	StatusBar  statusbar.Model
+	help       help.Model
+	keys       KeyMap
+	statusText string
+	statusBar  statusbar.Model
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
 	sb := statusbar.New(
 		statusbar.ColorConfig{
-			Foreground: statusBarForegroundSucessColor,
-			Background: statusBarBackgroundSucessColor,
+			Foreground: statusBarForegroundSuccessStyle,
+			Background: statusBarBackgroundSuccessStyle,
 		},
 		statusbar.ColorConfig{
-			Foreground: statusBarForegroundColor,
-			Background: statusBarBackgroundColor,
+			Foreground: statusBarForegroundStyle,
+			Background: statusBarBackgroundStyle,
 		},
 		statusbar.ColorConfig{
-			Foreground: statusBarForegroundColor,
-			Background: statusBarBackgroundColor,
+			Foreground: statusBarForegroundStyle,
+			Background: statusBarBackgroundStyle,
 		},
 		statusbar.ColorConfig{
-			Foreground: statusBarForegroundColor,
-			Background: statusBarBackgroundColor,
+			Foreground: statusBarForegroundStyle,
+			Background: statusBarBackgroundStyle,
 		},
 	)
 
-	apiKey, statusText := apiKey()
+	apiKey, st := apiKey()
 
 	if apiKey == "" {
 		sb.SetColors(statusbar.ColorConfig{
-			Foreground: statusBarForegroundErrorColor,
-			Background: statusBarBackgroundErrorColor,
+			Foreground: statusBarForegroundErrorStyle,
+			Background: statusBarBackgroundErrorStyle,
 		},
 			statusbar.ColorConfig{
-				Foreground: statusBarForegroundColor,
-				Background: statusBarBackgroundColor,
+				Foreground: statusBarForegroundStyle,
+				Background: statusBarBackgroundStyle,
 			},
 			statusbar.ColorConfig{
-				Foreground: statusBarForegroundColor,
-				Background: statusBarBackgroundColor,
+				Foreground: statusBarForegroundStyle,
+				Background: statusBarBackgroundStyle,
 			},
 			statusbar.ColorConfig{
-				Foreground: statusBarForegroundColor,
-				Background: statusBarBackgroundColor,
+				Foreground: statusBarForegroundStyle,
+				Background: statusBarBackgroundStyle,
 			})
 	}
 
 	return model{
-		Keys: KeyMap{
+		keys: KeyMap{
 			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		},
-		Help:       help.New(),
-		StatusBar:  sb,
-		StatusText: statusText,
+		help:       help.New(),
+		statusBar:  sb,
+		statusText: st,
 	}
 }
 
@@ -102,8 +101,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
-		m.StatusBar.SetSize(msg.Width)
-		m.StatusBar.SetContent(m.StatusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.Keys.Up.Help().Key, m.Keys.Up.Help().Desc, m.Keys.Down.Help().Key, m.Keys.Down.Help().Desc, m.Keys.Quit.Help().Key, m.Keys.Quit.Help().Desc), "", "")
+		m.statusBar.SetSize(msg.Width)
+		m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
 		return m, nil
 
 	case tea.KeyMsg:
@@ -127,6 +126,6 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.NewStyle().Height(m.height-statusbar.Height).Render(sb.String()),
-		m.StatusBar.View(),
+		m.statusBar.View(),
 	)
 }
