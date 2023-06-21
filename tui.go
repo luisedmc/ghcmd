@@ -1,43 +1,95 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/knipferrc/teacup/statusbar"
 )
 
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
+			Italic(true).
+			Align(lipgloss.Center).
 			Foreground(lipgloss.Color("#00FFA2"))
 
-	viewStyle = lipgloss.NewStyle().
-			Padding(1, 2)
+	statusBarForegroundSucessColor = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
+	statusBarBackgroundSucessColor = lipgloss.AdaptiveColor{Light: "#178009", Dark: "#178009"}
 
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#00ff04"}).
-		// Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"}).
-		Margin(1, 2)
+	statusBarForegroundErrorColor = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
+	statusBarBackgroundErrorColor = lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"}
+
+	statusBarForegroundColor = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"}
+	statusBarBackgroundColor = lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"}
 )
 
 type model struct {
-	Help   help.Model
-	Keys   KeyMap
-	Status int
+	height     int
+	Help       help.Model
+	Keys       KeyMap
+	Status     int
+	StatusText string
+	StatusBar  statusbar.Model
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
+	sb := statusbar.New(
+		statusbar.ColorConfig{
+			Foreground: statusBarForegroundSucessColor,
+			Background: statusBarBackgroundSucessColor,
+		},
+		statusbar.ColorConfig{
+			Foreground: statusBarForegroundColor,
+			Background: statusBarBackgroundColor,
+		},
+		statusbar.ColorConfig{
+			Foreground: statusBarForegroundColor,
+			Background: statusBarBackgroundColor,
+		},
+		statusbar.ColorConfig{
+			Foreground: statusBarForegroundColor,
+			Background: statusBarBackgroundColor,
+		},
+	)
+
+	apiKey := apiKey()
+	statusText := "Ready"
+
+	if apiKey == "" {
+		sb.SetColors(statusbar.ColorConfig{
+			Foreground: statusBarForegroundErrorColor,
+			Background: statusBarBackgroundErrorColor,
+		},
+			statusbar.ColorConfig{
+				Foreground: statusBarForegroundColor,
+				Background: statusBarBackgroundColor,
+			},
+			statusbar.ColorConfig{
+				Foreground: statusBarForegroundColor,
+				Background: statusBarBackgroundColor,
+			},
+			statusbar.ColorConfig{
+				Foreground: statusBarForegroundColor,
+				Background: statusBarBackgroundColor,
+			})
+		statusText = "No API Key"
+	}
+
 	return model{
 		Keys: KeyMap{
 			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		},
-		Help: help.New(),
+		Help:       help.New(),
+		StatusBar:  sb,
+		StatusText: statusText,
 	}
 }
 
@@ -49,6 +101,13 @@ func (m model) Init() tea.Cmd {
 // Update handle IO and commands
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		m.height = msg.Height
+		m.StatusBar.SetSize(msg.Width)
+		m.StatusBar.SetContent(m.StatusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.Keys.Up.Help().Key, m.Keys.Up.Help().Desc, m.Keys.Down.Help().Key, m.Keys.Down.Help().Desc, m.Keys.Quit.Help().Key, m.Keys.Quit.Help().Desc), "", "")
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -59,31 +118,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) statusView() string {
-	var (
-		status string
-		keys   string
-	)
-
-	switch m.Status {
-	default:
-		status = "Ready"
-		keys = m.Help.View(m.Keys)
-	}
-
-	return statusBarStyle.Render(status, keys)
-}
-
 // View return the text UI to be output to the terminal
 func (m model) View() string {
 	var sb strings.Builder
 
 	sb.WriteString(titleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
-	sb.WriteString("Welcome to Github CMD, a TUI for Github\n")
+	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		lipgloss.JoinHorizontal(lipgloss.Top, viewStyle.Render(sb.String())),
-		m.statusView(),
+	return lipgloss.JoinVertical(
+		lipgloss.Top,
+		lipgloss.NewStyle().Height(m.height-statusbar.Height).Render(sb.String()),
+		m.StatusBar.View(),
 	)
 }
