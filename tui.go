@@ -9,77 +9,46 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/knipferrc/teacup/statusbar"
-)
-
-var (
-	titleStyle = lipgloss.NewStyle().
-			Bold(true).
-			Italic(true).
-			Align(lipgloss.Center).
-			Foreground(lipgloss.Color("#00FFA2"))
-
-	statusBarForegroundSuccessStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
-	statusBarBackgroundSuccessStyle = lipgloss.AdaptiveColor{Light: "#178009", Dark: "#178009"}
-
-	statusBarForegroundErrorStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
-	statusBarBackgroundErrorStyle = lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"}
-
-	statusBarForegroundStyle = lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"}
-	statusBarBackgroundStyle = lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"}
+	"github.com/luisedmc/ghcmd/tui"
 )
 
 type model struct {
 	height     int
 	help       help.Model
-	keys       KeyMap
+	keys       tui.KeyMap
 	statusText string
 	statusBar  statusbar.Model
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	sb := statusbar.New(
-		statusbar.ColorConfig{
-			Foreground: statusBarForegroundSuccessStyle,
-			Background: statusBarBackgroundSuccessStyle,
-		},
-		statusbar.ColorConfig{
-			Foreground: statusBarForegroundStyle,
-			Background: statusBarBackgroundStyle,
-		},
-		statusbar.ColorConfig{
-			Foreground: statusBarForegroundStyle,
-			Background: statusBarBackgroundStyle,
-		},
-		statusbar.ColorConfig{
-			Foreground: statusBarForegroundStyle,
-			Background: statusBarBackgroundStyle,
-		},
-	)
-
 	apiKey, st := apiKey()
+	var sb statusbar.Model
 
 	if apiKey == "" {
-		sb.SetColors(statusbar.ColorConfig{
-			Foreground: statusBarForegroundErrorStyle,
-			Background: statusBarBackgroundErrorStyle,
-		},
+		sb = statusbar.New(
 			statusbar.ColorConfig{
-				Foreground: statusBarForegroundStyle,
-				Background: statusBarBackgroundStyle,
+				Foreground: tui.StatusBarForegroundErrorStyle,
+				Background: tui.StatusBarBackgroundErrorStyle,
 			},
+			tui.DefaultSBColors,
+			tui.DefaultSBColors,
+			tui.DefaultSBColors,
+		)
+	} else {
+		sb = statusbar.New(
 			statusbar.ColorConfig{
-				Foreground: statusBarForegroundStyle,
-				Background: statusBarBackgroundStyle,
+				Foreground: tui.StatusBarForegroundSuccessStyle,
+				Background: tui.StatusBarBackgroundSuccessStyle,
 			},
-			statusbar.ColorConfig{
-				Foreground: statusBarForegroundStyle,
-				Background: statusBarBackgroundStyle,
-			})
+			tui.DefaultSBColors,
+			tui.DefaultSBColors,
+			tui.DefaultSBColors,
+		)
 	}
 
 	return model{
-		keys: KeyMap{
+		keys: tui.KeyMap{
 			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
@@ -119,7 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var sb strings.Builder
 
-	sb.WriteString(titleStyle.Render("Github CMD"))
+	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
