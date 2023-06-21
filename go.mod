@@ -8,12 +8,12 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/google/go-github/v53 v53.2.0
 	github.com/joho/godotenv v1.5.1
+	github.com/knipferrc/teacup v0.3.1
 	golang.org/x/oauth2 v0.9.0
 )
 
 require (
 	github.com/ProtonMail/go-crypto v0.0.0-20230619160724-3fbb1f12458c // indirect
-	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
@@ -28,7 +28,6 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/sahilm/fuzzy v0.1.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
