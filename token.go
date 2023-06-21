@@ -2,9 +2,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
@@ -13,9 +16,21 @@ import (
 func apiKey() string {
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Println("Error loading .env file")
+		return ""
 	}
+
 	githubKey := os.Getenv("GITHUB_API_KEY")
+
+	// Github API Key curl test
+	curlCmd := exec.Command("curl", "-v", "-H", fmt.Sprintf("Authorization: token %s", githubKey), "https://api.github.com/user/issues")
+	output, _ := curlCmd.CombinedOutput()
+	_ = curlCmd.Run()
+
+	// Check if response contains "Bad credentials" == invalid API key
+	if strings.Contains(string(output), "Bad credentials") {
+		return ""
+	}
 
 	return githubKey
 }
