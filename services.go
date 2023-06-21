@@ -9,6 +9,12 @@ import (
 	"github.com/google/go-github/v53/github"
 )
 
+type Repository struct {
+	FullName    string
+	Description string
+	URL         string
+}
+
 func GithubClient(tokenClient *http.Client) *github.Client {
 	githubClient := github.NewClient(tokenClient)
 
