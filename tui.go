@@ -58,8 +58,7 @@ func StartGHCMD() model {
 		},
 	)
 
-	apiKey := apiKey()
-	statusText := "Ready"
+	apiKey, statusText := apiKey()
 
 	if apiKey == "" {
 		sb.SetColors(statusbar.ColorConfig{
@@ -78,7 +77,6 @@ func StartGHCMD() model {
 				Foreground: statusBarForegroundColor,
 				Background: statusBarBackgroundColor,
 			})
-		statusText = "No API Key"
 	}
 
 	return model{
