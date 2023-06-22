@@ -16,6 +16,7 @@ type model struct {
 	height     int
 	help       help.Model
 	keys       tui.KeyMap
+	list       tui.CustomList
 	statusText string
 	statusBar  statusbar.Model
 }
@@ -47,6 +48,10 @@ func StartGHCMD() model {
 		)
 	}
 
+	l := tui.CustomList{
+		Choices: tui.Choices,
+	}
+
 	return model{
 		keys: tui.KeyMap{
 			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
@@ -54,6 +59,7 @@ func StartGHCMD() model {
 			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		},
 		help:       help.New(),
+		list:       l,
 		statusBar:  sb,
 		statusText: st,
 	}
@@ -78,6 +84,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+
+		case "up", "k":
+			m.list.CursorUp()
+
+		case "down", "j":
+			m.list.CursorDown()
+
 		}
 	}
 
@@ -91,6 +104,7 @@ func (m model) View() string {
 	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
+	sb.WriteString(tui.ListStyle.Render(m.list.View()))
 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
