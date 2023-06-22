@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
-	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v53/github"
@@ -41,29 +40,7 @@ func StartGHCMD() model {
 	tc := TokenClient(ctx, ts)
 	client := GithubClient(tc)
 
-	var sb statusbar.Model
-
-	if apiKey == "" {
-		sb = statusbar.New(
-			statusbar.ColorConfig{
-				Foreground: tui.StatusBarForegroundErrorStyle,
-				Background: tui.StatusBarBackgroundErrorStyle,
-			},
-			tui.DefaultSBColors,
-			tui.DefaultSBColors,
-			tui.DefaultSBColors,
-		)
-	} else {
-		sb = statusbar.New(
-			statusbar.ColorConfig{
-				Foreground: tui.StatusBarForegroundSuccessStyle,
-				Background: tui.StatusBarBackgroundSuccessStyle,
-			},
-			tui.DefaultSBColors,
-			tui.DefaultSBColors,
-			tui.DefaultSBColors,
-		)
-	}
+	sb := tui.StatusBar(apiKey)
 
 	l := tui.CustomList{
 		Choices: tui.Choices,
@@ -75,11 +52,7 @@ func StartGHCMD() model {
 	}
 
 	return model{
-		keys: tui.KeyMap{
-			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
-		},
+		keys:             tui.KeyMaps(),
 		help:             help.New(),
 		list:             l,
 		statusBar:        sb,
