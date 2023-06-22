@@ -13,11 +13,11 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func apiKey() (string, string) {
+func apiKey() (string, string, bool) {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("Error loading .env file")
-		return "", "Token Not Found"
+		return "", "Token Not Found", false
 	}
 
 	githubKey := os.Getenv("GITHUB_API_KEY")
@@ -29,15 +29,15 @@ func apiKey() (string, string) {
 
 	// Check if response contains "Bad credentials" == invalid API key
 	if strings.Contains(string(output), "Bad credentials") {
-		return "", "Token Not Valid"
+		return "", "Invalid Token", false
 	}
 
-	return githubKey, "Ready"
+	return githubKey, "Valid Token", true
 }
 
 // Token returns a token source
 func Token() (oauth2.TokenSource, error) {
-	githubKey, _ := apiKey()
+	githubKey, _, _ := apiKey()
 
 	tokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubKey},
