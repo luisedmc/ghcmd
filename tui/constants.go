@@ -12,6 +12,12 @@ var (
 			Italic(true).
 			Align(lipgloss.Center).
 			Foreground(lipgloss.Color("#00FFA2"))
+	ErrorStyle = TitleStyle.Copy().
+			Italic(false).
+			Align(lipgloss.Left).
+			Foreground(lipgloss.Color("#FF0000"))
+	AlertStyle = ErrorStyle.Copy().
+			Foreground(lipgloss.Color("#FFA500"))
 
 	// Status bar colors
 	StatusBarForegroundSuccessStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
