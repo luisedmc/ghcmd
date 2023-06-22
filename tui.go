@@ -15,13 +15,15 @@ import (
 )
 
 type model struct {
-	height     int
-	help       help.Model
-	keys       tui.KeyMap
-	list       tui.CustomList
-	statusText string
-	statusBar  statusbar.Model
-	service    service
+	height           int
+	help             help.Model
+	keys             tui.KeyMap
+	list             tui.CustomList
+	statusText       string
+	statusBar        statusbar.Model
+	service          service
+	servicePerformed bool
+	responseData     *Repository
 }
 
 type service struct {
@@ -78,11 +80,13 @@ func StartGHCMD() model {
 			Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 			Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 		},
-		help:       help.New(),
-		list:       l,
-		statusBar:  sb,
-		statusText: st,
-		service:    s,
+		help:             help.New(),
+		list:             l,
+		statusBar:        sb,
+		statusText:       st,
+		service:          s,
+		responseData:     &Repository{},
+		servicePerformed: false,
 	}
 }
 
@@ -116,7 +120,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.list.Cursor {
 			case 0:
-				SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
+				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
+				m.servicePerformed = true
 				return m, nil
 			}
 		}
@@ -133,6 +138,12 @@ func (m model) View() string {
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 	sb.WriteString(tui.ListStyle.Render(m.list.View()))
+	if m.servicePerformed {
+		sb.WriteString("\n\nResults\n")
+		sb.WriteString("Owner: " + m.responseData.FullName + "\n")
+		sb.WriteString("Repository description: " + m.responseData.Description + "\n")
+		sb.WriteString("Respository URL: " + m.responseData.URL + "\n")
+	}
 
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
