@@ -35,6 +35,7 @@ func apiKey() (string, string) {
 	return githubKey, "Ready"
 }
 
+// Token returns a token source
 func Token() (oauth2.TokenSource, error) {
 	githubKey, _ := apiKey()
 
@@ -45,6 +46,7 @@ func Token() (oauth2.TokenSource, error) {
 	return tokenSource, nil
 }
 
+// TokenClient returns a HTTP Client from a context and a token source
 func TokenClient(ctx context.Context, ts oauth2.TokenSource) *http.Client {
 	return oauth2.NewClient(ctx, ts)
 }
