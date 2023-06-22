@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/go-github/v53/github"
 	"github.com/knipferrc/teacup/statusbar"
 	"github.com/luisedmc/ghcmd/tui"
 )
@@ -19,11 +21,24 @@ type model struct {
 	list       tui.CustomList
 	statusText string
 	statusBar  statusbar.Model
+	service    service
+}
+
+type service struct {
+	ctx    context.Context
+	client *github.Client
+	user   string
+	repo   string
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
 	apiKey, st := apiKey()
+	ctx := context.Background()
+	ts, _ := Token()
+	tc := TokenClient(ctx, ts)
+	client := GithubClient(tc)
+
 	var sb statusbar.Model
 
 	if apiKey == "" {
@@ -52,6 +67,11 @@ func StartGHCMD() model {
 		Choices: tui.Choices,
 	}
 
+	s := service{
+		ctx:    ctx,
+		client: client,
+	}
+
 	return model{
 		keys: tui.KeyMap{
 			Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
@@ -62,6 +82,7 @@ func StartGHCMD() model {
 		list:       l,
 		statusBar:  sb,
 		statusText: st,
+		service:    s,
 	}
 }
 
@@ -91,6 +112,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			m.list.CursorDown()
 
+		// Confirm selection
+		case "enter":
+			switch m.list.Cursor {
+			case 0:
+				SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
+				return m, nil
+			}
 		}
 	}
 
