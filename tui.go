@@ -26,15 +26,17 @@ type model struct {
 }
 
 type service struct {
-	ctx    context.Context
-	client *github.Client
-	user   string
-	repo   string
+	ctx     context.Context
+	client  *github.Client
+	user    string
+	repo    string
+	status  bool
+	message string
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	apiKey, st := apiKey()
+	apiKey, st, status := apiKey()
 	ctx := context.Background()
 	ts, _ := Token()
 	tc := TokenClient(ctx, ts)
@@ -47,8 +49,10 @@ func StartGHCMD() model {
 	}
 
 	s := service{
-		ctx:    ctx,
-		client: client,
+		ctx:     ctx,
+		client:  client,
+		status:  status,
+		message: "",
 	}
 
 	return model{
@@ -93,6 +97,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			switch m.list.Cursor {
 			case 0:
+				if !m.service.status {
+					m.responseData = nil
+					m.servicePerformed = false
+					m.service.message = "There's an error with your Github Token!"
+					return m, nil
+				}
 				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
 				m.servicePerformed = true
 				return m, nil
@@ -110,6 +120,9 @@ func (m model) View() string {
 	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
+	if m.service.message != "" {
+		sb.WriteString(tui.ErrorStyle.Render(m.service.message, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+	}
 	sb.WriteString(tui.ListStyle.Render(m.list.View()))
 	if m.servicePerformed {
 		sb.WriteString("\n\nResults\n")
