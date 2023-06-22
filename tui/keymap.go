@@ -1,11 +1,23 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/key"
+import (
+	"github.com/charmbracelet/bubbles/key"
+)
 
 type KeyMap struct {
 	Up   key.Binding
 	Down key.Binding
 	Quit key.Binding
+}
+
+func KeyMaps() KeyMap {
+	k := KeyMap{
+		Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+		Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+		Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
+	}
+
+	return k
 }
 
 func (k KeyMap) ShortHelp() []key.Binding {
