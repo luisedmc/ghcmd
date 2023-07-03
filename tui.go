@@ -26,12 +26,10 @@ type model struct {
 }
 
 type service struct {
-	ctx     context.Context
-	client  *github.Client
-	user    string
-	repo    string
-	status  bool
-	message string
+	ctx          context.Context
+	client       *github.Client
+	status       bool
+	errorMessage string
 }
 
 // StartGHCMD initialize the tui by returning a model
@@ -49,10 +47,10 @@ func StartGHCMD() model {
 	}
 
 	s := service{
-		ctx:     ctx,
-		client:  client,
-		status:  status,
-		message: "",
+		ctx:          ctx,
+		client:       client,
+		status:       status,
+		errorMessage: "",
 	}
 
 	return model{
@@ -100,12 +98,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if !m.service.status {
 					m.responseData = nil
 					m.servicePerformed = false
-					m.service.message = "There's an error with your Github Token!"
+					m.service.errorMessage = "There's an error with your Github Token!"
 					return m, nil
 				}
-				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
-				m.servicePerformed = true
-				return m, nil
+				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "da")
+				if m.responseData == nil {
+					m.service.errorMessage = "Repository not found!"
+					return m, nil
+				} else {
+					m.servicePerformed = true
+					return m, nil
+				}
 			}
 		}
 	}
@@ -120,9 +123,15 @@ func (m model) View() string {
 	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
-	if m.service.message != "" {
-		sb.WriteString(tui.ErrorStyle.Render(m.service.message, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+	switch m.service.errorMessage {
+	case "There's an error with your Github Token!":
+		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+	case "Repository not found!":
+		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	}
+	// if m.service.errorMessage != "" {
+	// 	sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+	// }
 	sb.WriteString(tui.ListStyle.Render(m.list.View()))
 	if m.servicePerformed {
 		sb.WriteString("\n\nResults\n")
