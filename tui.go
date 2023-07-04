@@ -29,8 +29,13 @@ type model struct {
 	servicePerformed bool
 	responseData     *Repository
 
-	tokenInput textinput.Model
-	inputState bool
+	tokenInput      textinput.Model
+	tokenInputState bool
+
+	searchInputs      []textinput.Model
+	searchInputsState bool
+
+	focusIndex int
 }
 
 type service struct {
@@ -43,12 +48,6 @@ type service struct {
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	// Token input
-	ti := textinput.New()
-	ti.Placeholder = "you can paste it"
-	ti.Focus()
-	ti.CharLimit = 40
-
 	ctx := context.Background()
 
 	l := tui.CustomList{
@@ -56,8 +55,7 @@ func StartGHCMD() model {
 	}
 
 	s := service{
-		ctx: ctx,
-		// client:       client,
+		ctx:          ctx,
 		errorMessage: "",
 		token:        "",
 	}
@@ -74,9 +72,21 @@ func StartGHCMD() model {
 		responseData:     &Repository{},
 		servicePerformed: false,
 
-		tokenInput: ti,
-		inputState: true,
+		tokenInput:      tui.TokenInput(),
+		tokenInputState: true,
+
+		searchInputs: tui.SearchInputs(),
 	}
+}
+
+func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
+	cmds := make([]tea.Cmd, 2)
+
+	for i := range m.searchInputs {
+		m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
+	}
+
+	return tea.Batch(cmds...)
 }
 
 // Init run any intial IO on program start
@@ -107,9 +117,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Confirm selection
 		case "enter":
-			if !m.inputState {
+			// The enter key here is used to select a service from the list only if the token input is not focused, so !m.inputState
+			if !m.tokenInputState {
 				switch m.list.Cursor {
 				case 0:
+					// Token error
 					if !m.service.status {
 						m.responseData = nil
 						m.servicePerformed = false
@@ -117,6 +129,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						return m, nil
 					}
 
+					// Create a new client if it doesn't exist
 					if m.service.client == nil {
 						ts, _ := TokenSource(m.service.token)
 						tc := TokenClient(m.service.ctx, ts)
@@ -124,7 +137,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.service.client = client
 					}
 
-					m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
+					// Search for a repository
+					m.searchInputsState = true
+
+					m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
 					if m.responseData == nil {
 						m.service.errorMessage = "Repository not found!"
 						return m, nil
@@ -134,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-			m.inputState = false
+			m.tokenInputState = false
 			m.tokenInput.Blur()
 
 			token, em, s := FetchToken(m.tokenInput.Value())
@@ -145,12 +161,51 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Updating status bar text
 			m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
 			m.statusText = m.service.errorMessage
+
+		case "tab":
+			if m.searchInputsState {
+				s := msg.String()
+
+				if s == "enter" && m.focusIndex == len(m.searchInputs) {
+					return m, nil
+				}
+
+				if s == "up" {
+					m.focusIndex--
+				} else {
+					m.focusIndex++
+				}
+
+				if m.focusIndex > len(m.searchInputs) {
+					m.focusIndex = 0
+				} else if m.focusIndex < 0 {
+					m.focusIndex = len(m.searchInputs)
+				}
+
+				cmds := make([]tea.Cmd, len(m.searchInputs))
+				for i := 0; i <= len(m.searchInputs)-1; i++ {
+					if i == m.focusIndex {
+						cmds[i] = m.searchInputs[i].Focus()
+						m.searchInputs[i].PromptStyle = tui.FocusedStyle
+						m.searchInputs[i].TextStyle = tui.FocusedStyle
+						continue
+					}
+
+					m.searchInputs[i].Blur()
+					m.searchInputs[i].PromptStyle = tui.NoStyle
+					m.searchInputs[i].TextStyle = tui.NoStyle
+				}
+
+				return m, tea.Batch(cmds...)
+			}
 		}
 	}
 
+	cmd := m.updateInputs(msg)
+
 	m.tokenInput, _ = m.tokenInput.Update(msg)
 
-	return m, nil
+	return m, cmd
 }
 
 // View returns the text UI to be output to the terminal
@@ -173,10 +228,15 @@ func (m model) View() string {
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	}
 
-	// Not typing...
-	if !m.inputState {
+	// If not typing the token, render the list of services
+	if !m.tokenInputState {
 		// Render list of services
 		sb.WriteString(tui.ListStyle.Render(m.list.View()))
+
+		if m.searchInputsState {
+			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
+		}
+
 		if m.servicePerformed {
 			sb.WriteString("\n\nResults\n")
 			sb.WriteString("Owner: " + m.responseData.FullName + "\n")
