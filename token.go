@@ -10,30 +10,35 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// FetchToken performs a request to the Github API to check if the token is valid
+// FetchToken returns a Github token, a status message and a status bool
 func FetchToken(githubKey string) (string, string, bool) {
 	if githubKey == "" {
 		return "", "Token Not Found", false
 	}
 
-	curlCmd := exec.Command("curl", "-v", "-H", fmt.Sprintf("Authorization: token %s", githubKey), "https://api.github.com/user/issues")
-	output, _ := curlCmd.CombinedOutput()
-	_ = curlCmd.Run()
+	res := TestToken(githubKey)
 
 	// Check if response contains "Bad credentials" == invalid API key
-	if strings.Contains(string(output), "Bad credentials") {
+	if strings.Contains(string(res), "Bad credentials") {
 		return "", "Invalid Token", false
 	}
 
 	return githubKey, "Valid Token", true
 }
 
+// TestToken performs a request to the Github API to check if the token is valid
+func TestToken(githubKey string) []byte {
+	curlCmd := exec.Command("curl", "-v", "-H", fmt.Sprintf("Authorization: token %s", githubKey), "https://api.github.com/user/issues")
+	output, _ := curlCmd.CombinedOutput()
+	_ = curlCmd.Run()
+
+	return output
+}
+
 // Token returns a token source
 func TokenSource(tokenInput string) (oauth2.TokenSource, error) {
-	githubKey, _, _ := FetchToken(tokenInput)
-
 	tokenSource := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: githubKey},
+		&oauth2.Token{AccessToken: tokenInput},
 	)
 
 	return tokenSource, nil
