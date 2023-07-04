@@ -3,30 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
 
-	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
 
-func apiKey() (string, string, bool) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Error loading .env file")
-		return "", "Token Not Found", false
-	}
-
-	githubKey := os.Getenv("GITHUB_API_KEY")
-
-	ghkey, msg, status := FetchToken(githubKey)
-
-	return ghkey, msg, status
-}
-
+// FetchToken performs a request to the Github API to check if the token is valid
 func FetchToken(githubKey string) (string, string, bool) {
 	if githubKey == "" {
 		return "", "Token Not Found", false
@@ -45,8 +29,8 @@ func FetchToken(githubKey string) (string, string, bool) {
 }
 
 // Token returns a token source
-func Token() (oauth2.TokenSource, error) {
-	githubKey, _, _ := apiKey()
+func TokenSource(tokenInput string) (oauth2.TokenSource, error) {
+	githubKey, _, _ := FetchToken(tokenInput)
 
 	tokenSource := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubKey},
