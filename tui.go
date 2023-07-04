@@ -15,12 +15,14 @@ import (
 )
 
 type model struct {
-	height           int
+	height int
+
 	help             help.Model
 	keys             tui.KeyMap
 	list             tui.CustomList
 	statusText       string
 	statusBar        statusbar.Model
+	statusBarWidth   int
 	service          service
 	servicePerformed bool
 	responseData     *Repository
@@ -60,7 +62,7 @@ func StartGHCMD() model {
 	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
 
 	ti := textinput.New()
-	ti.Placeholder = "Enter your Github Token"
+	ti.Placeholder = "you can paste it :)"
 	ti.Focus()
 	ti.CharLimit = 40
 
@@ -90,8 +92,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
+		m.statusBarWidth = msg.Width
 		m.statusBar.SetSize(msg.Width)
-		m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
 		return m, nil
 
 	case tea.KeyMsg:
@@ -129,10 +131,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inputState = false
 				m.tokenInput.Blur()
 
-				key, em, s := FetchToken(m.tokenInput.Value())
-				m.service.token = key
+				token, em, s := FetchToken(m.tokenInput.Value())
+				m.service.token = token
 				m.service.errorMessage = em
 				m.service.status = s
+
+				// Updating status bar text
+				m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
+				m.statusText = m.service.errorMessage
 
 			}
 		}
@@ -143,7 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// View return the text UI to be output to the terminal
+// View returns the text UI to be output to the terminal
 func (m model) View() string {
 	var sb strings.Builder
 
@@ -163,6 +169,7 @@ func (m model) View() string {
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	}
 
+	// Not typing...
 	if !m.inputState {
 		// Render list of services
 		sb.WriteString(tui.ListStyle.Render(m.list.View()))
@@ -170,11 +177,15 @@ func (m model) View() string {
 			sb.WriteString("\n\nResults\n")
 			sb.WriteString("Owner: " + m.responseData.FullName + "\n")
 			sb.WriteString("Repository description: " + m.responseData.Description + "\n")
-			sb.WriteString("Respository URL: " + m.responseData.URL + "\n")
+			sb.WriteString("Repository URL: " + m.responseData.URL + "\n")
 		}
 	}
 
-	// Return final view
+	// Update the status bar after user input
+	m.statusBar.SetSize(m.statusBarWidth)
+	m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+
+	// Return the final view
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.NewStyle().Height(m.height-statusbar.Height).Render(sb.String()),
