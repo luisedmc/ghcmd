@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v53/github"
@@ -23,6 +24,9 @@ type model struct {
 	service          service
 	servicePerformed bool
 	responseData     *Repository
+
+	tokenInput textinput.Model
+	inputState bool
 }
 
 type service struct {
@@ -30,44 +34,54 @@ type service struct {
 	client       *github.Client
 	status       bool
 	errorMessage string
+	token        string
 }
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	apiKey, st, status := apiKey()
+	// apiKey, st, status := apiKey()
 	ctx := context.Background()
 	ts, _ := Token()
 	tc := TokenClient(ctx, ts)
 	client := GithubClient(tc)
-
-	sb := tui.StatusBar(apiKey)
 
 	l := tui.CustomList{
 		Choices: tui.Choices,
 	}
 
 	s := service{
-		ctx:          ctx,
-		client:       client,
-		status:       status,
+		ctx:    ctx,
+		client: client,
+		// status:       ,
 		errorMessage: "",
+		token:        "",
 	}
+
+	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
+
+	ti := textinput.New()
+	ti.Placeholder = "Enter your Github Token"
+	ti.Focus()
+	ti.CharLimit = 40
 
 	return model{
 		keys:             tui.KeyMaps(),
 		help:             help.New(),
 		list:             l,
 		statusBar:        sb,
-		statusText:       st,
+		statusText:       s.errorMessage,
 		service:          s,
 		responseData:     &Repository{},
 		servicePerformed: false,
+
+		tokenInput: ti,
+		inputState: true,
 	}
 }
 
 // Init run any intial IO on program start
 func (m model) Init() tea.Cmd {
-	return nil
+	return textinput.Blink
 }
 
 // Update handle IO and commands
@@ -93,25 +107,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Confirm selection
 		case "enter":
-			switch m.list.Cursor {
-			case 0:
-				if !m.service.status {
-					m.responseData = nil
-					m.servicePerformed = false
-					m.service.errorMessage = "There's an error with your Github Token!"
-					return m, nil
+			if !m.inputState {
+				switch m.list.Cursor {
+				case 0:
+					if !m.service.status {
+						m.responseData = nil
+						m.servicePerformed = false
+						m.service.errorMessage = "There's an error with your Github Token!"
+						return m, nil
+					}
+					m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
+					if m.responseData == nil {
+						m.service.errorMessage = "Repository not found!"
+						return m, nil
+					} else {
+						m.servicePerformed = true
+						return m, nil
+					}
 				}
-				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
-				if m.responseData == nil {
-					m.service.errorMessage = "Repository not found!"
-					return m, nil
-				} else {
-					m.servicePerformed = true
-					return m, nil
-				}
+			} else {
+				m.inputState = false
+				m.tokenInput.Blur()
+
+				key, em, s := FetchToken(m.tokenInput.Value())
+				m.service.token = key
+				m.service.errorMessage = em
+				m.service.status = s
+
 			}
 		}
 	}
+
+	m.tokenInput, _ = m.tokenInput.Update(msg)
 
 	return m, nil
 }
@@ -125,6 +152,9 @@ func (m model) View() string {
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
+	// Render token input
+	sb.WriteString("\n" + m.tokenInput.View() + "\n\n")
+
 	// Render custom error message
 	switch m.service.errorMessage {
 	case "There's an error with your Github Token!":
@@ -133,13 +163,15 @@ func (m model) View() string {
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	}
 
-	// Render list of services
-	sb.WriteString(tui.ListStyle.Render(m.list.View()))
-	if m.servicePerformed {
-		sb.WriteString("\n\nResults\n")
-		sb.WriteString("Owner: " + m.responseData.FullName + "\n")
-		sb.WriteString("Repository description: " + m.responseData.Description + "\n")
-		sb.WriteString("Respository URL: " + m.responseData.URL + "\n")
+	if !m.inputState {
+		// Render list of services
+		sb.WriteString(tui.ListStyle.Render(m.list.View()))
+		if m.servicePerformed {
+			sb.WriteString("\n\nResults\n")
+			sb.WriteString("Owner: " + m.responseData.FullName + "\n")
+			sb.WriteString("Repository description: " + m.responseData.Description + "\n")
+			sb.WriteString("Respository URL: " + m.responseData.URL + "\n")
+		}
 	}
 
 	// Return final view
