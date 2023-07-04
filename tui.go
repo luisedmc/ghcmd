@@ -17,12 +17,14 @@ import (
 type model struct {
 	height int
 
-	help             help.Model
-	keys             tui.KeyMap
-	list             tui.CustomList
-	statusText       string
-	statusBar        statusbar.Model
-	statusBarWidth   int
+	help help.Model
+	keys tui.KeyMap
+	list tui.CustomList
+
+	statusText     string
+	statusBar      statusbar.Model
+	statusBarWidth int
+
 	service          service
 	servicePerformed bool
 	responseData     *Repository
@@ -41,30 +43,26 @@ type service struct {
 
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
-	// apiKey, st, status := apiKey()
+	// Token input
+	ti := textinput.New()
+	ti.Placeholder = "you can paste it"
+	ti.Focus()
+	ti.CharLimit = 40
+
 	ctx := context.Background()
-	ts, _ := Token()
-	tc := TokenClient(ctx, ts)
-	client := GithubClient(tc)
 
 	l := tui.CustomList{
 		Choices: tui.Choices,
 	}
 
 	s := service{
-		ctx:    ctx,
-		client: client,
-		// status:       ,
+		ctx: ctx,
+		// client:       client,
 		errorMessage: "",
 		token:        "",
 	}
 
 	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
-
-	ti := textinput.New()
-	ti.Placeholder = "you can paste it :)"
-	ti.Focus()
-	ti.CharLimit = 40
 
 	return model{
 		keys:             tui.KeyMaps(),
@@ -118,29 +116,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.service.errorMessage = "There's an error with your Github Token!"
 						return m, nil
 					}
+
+					if m.service.client == nil {
+						ts, _ := TokenSource(m.service.token)
+						tc := TokenClient(m.service.ctx, ts)
+						client := GithubClient(tc)
+						m.service.client = client
+					}
+
 					m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
 					if m.responseData == nil {
 						m.service.errorMessage = "Repository not found!"
 						return m, nil
-					} else {
-						m.servicePerformed = true
-						return m, nil
 					}
+
+					m.servicePerformed = true
+					return m, nil
 				}
-			} else {
-				m.inputState = false
-				m.tokenInput.Blur()
-
-				token, em, s := FetchToken(m.tokenInput.Value())
-				m.service.token = token
-				m.service.errorMessage = em
-				m.service.status = s
-
-				// Updating status bar text
-				m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
-				m.statusText = m.service.errorMessage
-
 			}
+			m.inputState = false
+			m.tokenInput.Blur()
+
+			token, em, s := FetchToken(m.tokenInput.Value())
+			m.service.token = token
+			m.service.errorMessage = em
+			m.service.status = s
+
+			// Updating status bar text
+			m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
+			m.statusText = m.service.errorMessage
 		}
 	}
 
