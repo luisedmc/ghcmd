@@ -101,7 +101,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.service.errorMessage = "There's an error with your Github Token!"
 					return m, nil
 				}
-				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "da")
+				m.responseData = SearchRepository(m.service.ctx, m.service.client, "luisedmc", "dsa")
 				if m.responseData == nil {
 					m.service.errorMessage = "Repository not found!"
 					return m, nil
@@ -120,18 +120,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var sb strings.Builder
 
+	// Render main
 	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
+
+	// Render custom error message
 	switch m.service.errorMessage {
 	case "There's an error with your Github Token!":
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
 	case "Repository not found!":
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	}
-	// if m.service.errorMessage != "" {
-	// 	sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
-	// }
+
+	// Render list of services
 	sb.WriteString(tui.ListStyle.Render(m.list.View()))
 	if m.servicePerformed {
 		sb.WriteString("\n\nResults\n")
@@ -140,6 +142,7 @@ func (m model) View() string {
 		sb.WriteString("Respository URL: " + m.responseData.URL + "\n")
 	}
 
+	// Return final view
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
 		lipgloss.NewStyle().Height(m.height-statusbar.Height).Render(sb.String()),
