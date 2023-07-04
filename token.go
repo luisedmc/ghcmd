@@ -22,7 +22,16 @@ func apiKey() (string, string, bool) {
 
 	githubKey := os.Getenv("GITHUB_API_KEY")
 
-	// Github API Key curl test
+	ghkey, msg, status := FetchToken(githubKey)
+
+	return ghkey, msg, status
+}
+
+func FetchToken(githubKey string) (string, string, bool) {
+	if githubKey == "" {
+		return "", "Token Not Found", false
+	}
+
 	curlCmd := exec.Command("curl", "-v", "-H", fmt.Sprintf("Authorization: token %s", githubKey), "https://api.github.com/user/issues")
 	output, _ := curlCmd.CombinedOutput()
 	_ = curlCmd.Run()
