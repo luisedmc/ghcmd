@@ -44,8 +44,10 @@ For now, it is a work in progress and only supports a few commands. I will be al
 
 <div align="center">
     Main view</br>
-    <img src="/docs/main.png" alt="Main view" width=380 height=380>
+    <img src="/docs/main.png" alt="Main view" width=700 height=400>
 </div>
+
+One day I might improve the TUI...
 
 ## :page_facing_up: License
 
