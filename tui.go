@@ -32,10 +32,9 @@ type model struct {
 	tokenInput      textinput.Model
 	tokenInputState bool
 
+	focusIndex        int
 	searchInputs      []textinput.Model
 	searchInputsState bool
-
-	focusIndex int
 }
 
 type service struct {
@@ -80,7 +79,7 @@ func StartGHCMD() model {
 }
 
 func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
-	cmds := make([]tea.Cmd, 2)
+	cmds := make([]tea.Cmd, len(m.searchInputs))
 
 	for i := range m.searchInputs {
 		m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
@@ -94,7 +93,7 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// Update handle IO and commands
+// / Update handle IO and commands
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
@@ -115,14 +114,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			m.list.CursorDown()
 
-		// Confirm selection
 		case "enter":
-			// The enter key here is used to select a service from the list only if the token input is not focused, so !m.inputState
-			if !m.tokenInputState {
+			if m.searchInputsState {
+				m.searchInputsState = false
+
+				// Perform the search
+				m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
+				if m.responseData == nil {
+					m.service.errorMessage = "Repository not found!"
+					return m, nil
+				}
+				m.servicePerformed = true
+				return m, nil
+
+			} else if !m.tokenInputState {
 				switch m.list.Cursor {
 				case 0:
-					// Token error
-					if !m.service.status {
+					if m.service.token == "" {
 						m.responseData = nil
 						m.servicePerformed = false
 						m.service.errorMessage = "There's an error with your Github Token!"
@@ -137,19 +145,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.service.client = client
 					}
 
-					// Search for a repository
+					m.service.errorMessage = ""
+
+					// Show the search inputs
 					m.searchInputsState = true
-
-					m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
-					if m.responseData == nil {
-						m.service.errorMessage = "Repository not found!"
-						return m, nil
-					}
-
-					m.servicePerformed = true
+					m.searchInputs[0].SetValue("")
+					m.searchInputs[1].SetValue("")
 					return m, nil
 				}
 			}
+
 			m.tokenInputState = false
 			m.tokenInput.Blur()
 
@@ -247,7 +252,11 @@ func (m model) View() string {
 
 	// Update the status bar after user input
 	m.statusBar.SetSize(m.statusBarWidth)
-	m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+	if m.statusText == "" {
+		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+	} else {
+		m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+	}
 
 	// Return the final view
 	return lipgloss.JoinVertical(
