@@ -26,7 +26,7 @@ var (
 	StatusBarForegroundErrorStyle = lipgloss.AdaptiveColor{Dark: "#ffffff", Light: "#ffffff"}
 	StatusBarBackgroundErrorStyle = lipgloss.AdaptiveColor{Light: "#FF0000", Dark: "#FF0000"}
 
-	DefaultSBColors = statusbar.ColorConfig{
+	DefaultStatusBarSyle = statusbar.ColorConfig{
 		Foreground: lipgloss.AdaptiveColor{Light: "#ffffff", Dark: "#ffffff"},
 		Background: lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"},
 	}
@@ -47,4 +47,8 @@ var (
 				Foreground(lipgloss.AdaptiveColor{Light: "#c8ded6", Dark: "#c8ded6"})
 
 	ListStyle = lipgloss.NewStyle().Margin(1, 2)
+
+	// Input colors
+	NoStyle      = lipgloss.NewStyle()
+	FocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 )
