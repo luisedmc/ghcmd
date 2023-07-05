@@ -13,7 +13,7 @@ import (
 // FetchToken returns a Github token, a status message and a status bool
 func FetchToken(githubKey string) (string, string, bool) {
 	if githubKey == "" {
-		return "", "Token Not Found", false
+		return "", "Unwritten Token", false
 	}
 
 	res := TestToken(githubKey)
