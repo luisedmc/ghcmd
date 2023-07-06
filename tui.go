@@ -35,17 +35,18 @@ type model struct {
 	focusIndex        int
 	searchInputs      []textinput.Model
 	searchInputsState bool
-
 	createInputs      []textinput.Model
 	createInputsState bool
 }
 
 type service struct {
 	ctx          context.Context
+	token        string
 	client       *github.Client
 	status       bool
+	message      string
 	errorMessage string
-	token        string
+	url          *string
 }
 
 // StartGHCMD initialize the tui by returning a model
@@ -172,24 +173,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.searchInputsState {
 				m.searchInputsState = false
-
 				// Perform the search
 				m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
 				if m.responseData == nil {
 					m.service.errorMessage = "Repository not found!"
 					return m, nil
 				}
+				m.service.url = nil
 				m.servicePerformed = true
 				return m, nil
+
 			} else if m.createInputsState {
 				m.createInputsState = false
-
-				// Perform the search
-				CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
-				if m.responseData == nil {
-					m.service.errorMessage = "There's an error creating the repository!"
-					return m, nil
+				// Perform the creation
+				res, msg, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
+				if err != nil {
+					m.service.errorMessage = "Repository already exists."
 				}
+				m.service.url = res
+				m.service.message = msg
+				m.responseData = nil
 				m.servicePerformed = true
 				return m, nil
 
@@ -242,6 +245,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.searchInputsState || m.createInputsState {
 				m.createInputsState = false
 				m.searchInputsState = false
+				for i := 0; i < 2; i++ {
+					m.searchInputs[i].SetValue("")
+					m.createInputs[i].SetValue("")
+				}
 				return m, nil
 			}
 
@@ -281,30 +288,43 @@ func (m model) View() string {
 	} else {
 		sb.WriteString("\n")
 	}
+
 	// Render custom error message
 	switch m.service.errorMessage {
 	case "There's an error with your Github Token!":
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
 	case "Repository not found!":
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
+	case "Repository already exists!":
+		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
+	case "Repository creation failed!":
+		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occured.")) + "\n")
 	}
 
 	// If not typing the token, render the list of services
 	if !m.tokenInputState {
 		// Render list of services
 		sb.WriteString(tui.ListStyle.Render(m.list.View()))
-
 		if m.searchInputsState {
 			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
 		} else if m.createInputsState {
 			sb.WriteString("\n" + m.createInputs[0].View() + "\n" + m.createInputs[1].View() + "\n")
 		}
+	}
 
-		if m.servicePerformed {
-			sb.WriteString("\n\nResults\n")
-			sb.WriteString("Owner: " + m.responseData.FullName + "\n")
+	// Render service response
+	if m.servicePerformed {
+		// Search
+		if m.responseData != nil {
+			sb.WriteString("\nOwner: " + m.responseData.FullName + "\n")
 			sb.WriteString("Repository description: " + m.responseData.Description + "\n")
 			sb.WriteString("Repository URL: " + m.responseData.URL + "\n")
+		}
+
+		// Create
+		if m.service.url != nil {
+			sb.WriteString("\n" + m.service.message + "\n")
+			sb.WriteString("Repository URL: " + *m.service.url + "\n")
 		}
 	}
 
