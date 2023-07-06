@@ -2,9 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
+	"strings"
 
 	"github.com/google/go-github/v53/github"
 )
@@ -40,7 +39,7 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 }
 
 // CreateRepository creates a new repository in the user account.
-func CreateRepository(ctx context.Context, githubClient *github.Client, repoName string, isPrivate string) {
+func CreateRepository(ctx context.Context, githubClient *github.Client, repoName string, isPrivate string) (*string, string, error) {
 	isPrivateBool := false
 	if isPrivate == "y" {
 		isPrivateBool = true
@@ -51,10 +50,13 @@ func CreateRepository(ctx context.Context, githubClient *github.Client, repoName
 		Private: github.Bool(isPrivateBool),
 	}
 
-	_, _, err := githubClient.Repositories.Create(ctx, "", newRepository)
+	res, _, err := githubClient.Repositories.Create(ctx, "", newRepository)
 	if err != nil {
-		log.Println(err)
-	} else {
-		fmt.Println("Repository created successfully!")
+		if strings.Contains(err.Error(), "422") {
+			return nil, "Repository already exists!", err
+		}
+		return nil, "Repository creation failed!", err
 	}
+
+	return res.HTMLURL, "Repository created successfully!", nil
 }
