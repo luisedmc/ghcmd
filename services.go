@@ -39,10 +39,16 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 	return repositoryData
 }
 
-func CreateRepository(ctx context.Context, repoName string, isPrivate bool, githubClient *github.Client) {
+// CreateRepository creates a new repository in the user account.
+func CreateRepository(ctx context.Context, githubClient *github.Client, repoName string, isPrivate string) {
+	isPrivateBool := false
+	if isPrivate == "y" {
+		isPrivateBool = true
+	}
+
 	newRepository := &github.Repository{
 		Name:    github.String(repoName),
-		Private: github.Bool(isPrivate),
+		Private: github.Bool(isPrivateBool),
 	}
 
 	_, _, err := githubClient.Repositories.Create(ctx, "", newRepository)
