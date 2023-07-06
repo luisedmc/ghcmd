@@ -26,8 +26,6 @@ github.com/google/go-github/v53 v53.2.0 h1:wvz3FyF53v4BK+AsnvCmeNhf8AkTaeh2SoYu/
 github.com/google/go-github/v53 v53.2.0/go.mod h1:XhFRObz+m/l+UCm9b7KSIC3lT3NWSXGt7mOsAWEloao=
 github.com/google/go-querystring v1.1.0 h1:AnCroh3fv4ZBgVIf1Iwtovgjaw/GiKJo8M8yD/fhyJ8=
 github.com/google/go-querystring v1.1.0/go.mod h1:Kcdr2DB4koayq7X8pmAG4sNG59So17icRSOU623lUBU=
-github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
-github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/knipferrc/teacup v0.3.1 h1:EhEGAONKkOgW/7R339jYa+En03UaDlGSY/AImncMfBo=
 github.com/knipferrc/teacup v0.3.1/go.mod h1:96Y/xb6KS3vOaOxJuZZwnFas+4m7/FKeQtllLikkjl0=
 github.com/lucasb-eyer/go-colorful v1.2.0 h1:1nnpGOrhyZZuNyfu1QjKiUICQ74+3FNCN69Aj6K7nkY=
