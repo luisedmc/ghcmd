@@ -35,6 +35,9 @@ type model struct {
 	focusIndex        int
 	searchInputs      []textinput.Model
 	searchInputsState bool
+
+	createInputs      []textinput.Model
+	createInputsState bool
 }
 
 type service struct {
@@ -75,17 +78,69 @@ func StartGHCMD() model {
 		tokenInputState: true,
 
 		searchInputs: tui.SearchInputs(),
+
+		createInputs: tui.CreateInputs(),
 	}
 }
 
-func (m *model) updateInputs(msg tea.Msg) tea.Cmd {
+func (m *model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
 	cmds := make([]tea.Cmd, len(m.searchInputs))
 
-	for i := range m.searchInputs {
-		m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
+	if isSearch {
+		for i := range m.searchInputs {
+			m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
+		}
+	}
+
+	for i := range m.createInputs {
+		m.createInputs[i], cmds[i] = m.createInputs[i].Update(msg)
 	}
 
 	return tea.Batch(cmds...)
+}
+
+func (m model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) (tea.Model, tea.Cmd) {
+	s := msg.String()
+
+	if s == "enter" && focusIndex == len(inputs) {
+		return m, nil
+	}
+
+	if s == "up" {
+		focusIndex--
+	} else {
+		focusIndex++
+	}
+
+	if focusIndex > len(inputs) {
+		focusIndex = 0
+	} else if focusIndex < 0 {
+		focusIndex = len(inputs)
+	}
+
+	cmds := make([]tea.Cmd, len(inputs))
+	for i := 0; i <= len(inputs)-1; i++ {
+		if i == focusIndex {
+			cmds[i] = inputs[i].Focus()
+			inputs[i].PromptStyle = tui.FocusedStyle
+			inputs[i].TextStyle = tui.FocusedStyle
+			continue
+		}
+
+		inputs[i].Blur()
+		inputs[i].PromptStyle = tui.NoStyle
+		inputs[i].TextStyle = tui.NoStyle
+	}
+
+	if m.searchInputsState {
+		m.searchInputs = inputs
+		m.focusIndex = focusIndex
+	} else if m.createInputsState {
+		m.searchInputs = inputs
+		m.focusIndex = focusIndex
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 // Init run any intial IO on program start
@@ -126,31 +181,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.servicePerformed = true
 				return m, nil
+			} else if m.createInputsState {
+				m.createInputsState = false
+
+				// Perform the search
+				CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
+				if m.responseData == nil {
+					m.service.errorMessage = "There's an error creating the repository!"
+					return m, nil
+				}
+				m.servicePerformed = true
+				return m, nil
 
 			} else if !m.tokenInputState {
+				if m.service.token == "" {
+					m.responseData = nil
+					m.servicePerformed = false
+					m.service.errorMessage = "There's an error with your Github Token!"
+					return m, nil
+				}
+				// Create a new client if it doesn't exist
+				if m.service.client == nil {
+					ts, _ := TokenSource(m.service.token)
+					tc := TokenClient(m.service.ctx, ts)
+					client := GithubClient(tc)
+					m.service.client = client
+				}
 				switch m.list.Cursor {
+				// Search Repository
 				case 0:
-					if m.service.token == "" {
-						m.responseData = nil
-						m.servicePerformed = false
-						m.service.errorMessage = "There's an error with your Github Token!"
-						return m, nil
-					}
-
-					// Create a new client if it doesn't exist
-					if m.service.client == nil {
-						ts, _ := TokenSource(m.service.token)
-						tc := TokenClient(m.service.ctx, ts)
-						client := GithubClient(tc)
-						m.service.client = client
-					}
-
 					m.service.errorMessage = ""
-
-					// Show the search inputs
 					m.searchInputsState = true
 					m.searchInputs[0].SetValue("")
 					m.searchInputs[1].SetValue("")
+					return m, nil
+
+				// Create Repository
+				case 1:
+					m.service.errorMessage = ""
+					m.createInputsState = true
+					m.createInputs[0].SetValue("")
+					m.createInputs[1].SetValue("")
 					return m, nil
 				}
 			}
@@ -167,46 +238,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
 			m.statusText = m.service.errorMessage
 
+		case "esc":
+			if m.searchInputsState || m.createInputsState {
+				m.createInputsState = false
+				m.searchInputsState = false
+				return m, nil
+			}
+
 		case "tab":
 			if m.searchInputsState {
-				s := msg.String()
-
-				if s == "enter" && m.focusIndex == len(m.searchInputs) {
-					return m, nil
-				}
-
-				if s == "up" {
-					m.focusIndex--
-				} else {
-					m.focusIndex++
-				}
-
-				if m.focusIndex > len(m.searchInputs) {
-					m.focusIndex = 0
-				} else if m.focusIndex < 0 {
-					m.focusIndex = len(m.searchInputs)
-				}
-
-				cmds := make([]tea.Cmd, len(m.searchInputs))
-				for i := 0; i <= len(m.searchInputs)-1; i++ {
-					if i == m.focusIndex {
-						cmds[i] = m.searchInputs[i].Focus()
-						m.searchInputs[i].PromptStyle = tui.FocusedStyle
-						m.searchInputs[i].TextStyle = tui.FocusedStyle
-						continue
-					}
-
-					m.searchInputs[i].Blur()
-					m.searchInputs[i].PromptStyle = tui.NoStyle
-					m.searchInputs[i].TextStyle = tui.NoStyle
-				}
-
-				return m, tea.Batch(cmds...)
+				return m.tabKey(msg, m.searchInputs, m.focusIndex)
+			} else if m.createInputsState {
+				return m.tabKey(msg, m.createInputs, m.focusIndex)
 			}
 		}
 	}
 
-	cmd := m.updateInputs(msg)
+	var cmd tea.Cmd
+	if m.searchInputsState {
+		cmd = m.updateInputs(msg, true)
+	} else {
+		cmd = m.updateInputs(msg, false)
+	}
 
 	m.tokenInput, _ = m.tokenInput.Update(msg)
 
@@ -223,8 +276,11 @@ func (m model) View() string {
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
 	// Render token input
-	sb.WriteString("\n" + m.tokenInput.View() + "\n\n")
-
+	if m.tokenInputState {
+		sb.WriteString("\n" + m.tokenInput.View() + "\n")
+	} else {
+		sb.WriteString("\n")
+	}
 	// Render custom error message
 	switch m.service.errorMessage {
 	case "There's an error with your Github Token!":
@@ -240,6 +296,8 @@ func (m model) View() string {
 
 		if m.searchInputsState {
 			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
+		} else if m.createInputsState {
+			sb.WriteString("\n" + m.createInputs[0].View() + "\n" + m.createInputs[1].View() + "\n")
 		}
 
 		if m.servicePerformed {
