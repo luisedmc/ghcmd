@@ -51,7 +51,7 @@ For now, it is a work in progress and only supports a few commands. I will be al
     <img src="/docs/main.png" alt="main view" width=700 height=400>
 
     This is how a successful search looks like<br>
-    <img src="/docs/example.gif" alt="search example">
+    ![](https://github.com/luisedmc/ghcmd/blob/master/docs/example.gif)
 
 </div>
 
