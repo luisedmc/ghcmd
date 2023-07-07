@@ -46,13 +46,9 @@ For now, it is a work in progress and only supports a few commands. I will be al
 
 ## :camera_flash: Screenshots
 
-<div align="center">
-    Main view<br>
-    <img src="/docs/main.png" alt="main view" width=700 height=400>
-
+<div align=center>
     This is how a successful search looks like<br>
-    ![](https://github.com/luisedmc/ghcmd/blob/master/docs/example.gif)
-
+    <img src="/docs/example.gif" width=700 height=400>
 </div>
 
 I have ideas to improve the TUI, make more pretty but for it's working fine (a few bugs here and there but nothing that breaks the application).
