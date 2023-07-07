@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.7.1
 	github.com/google/go-github/v53 v53.2.0
 	github.com/knipferrc/teacup v0.3.1
+	github.com/syndtr/goleveldb v1.0.0
 	golang.org/x/oauth2 v0.9.0
 )
 
@@ -29,7 +30,6 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.1 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/syndtr/goleveldb v1.0.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
 	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
