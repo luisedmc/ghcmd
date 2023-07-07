@@ -218,7 +218,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Perform the creation
 				res, msg, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
 				if err != nil {
-					m.service.errorMessage = "Repository already exists."
+					m.service.errorMessage = msg
 				}
 				m.service.url = res
 				m.service.message = msg
@@ -291,6 +291,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m.tabKey(msg, m.searchInputs, m.focusIndex)
 			} else if m.createInputsState {
 				return m.tabKey(msg, m.createInputs, m.focusIndex)
+			} else {
+				return m, nil
 			}
 		}
 	}
@@ -333,13 +335,13 @@ func (m model) View() string {
 	// Render custom error message
 	switch m.service.errorMessage {
 	case "There's an error with your Github Token!":
-		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
 	case "Repository not found!":
-		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
 	case "Repository already exists!":
-		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
 	case "Repository creation failed!":
-		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occured.")) + "\n")
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occured.")) + "\n")
 	}
 
 	// Render service response
