@@ -1,7 +1,6 @@
 package db
 
 import (
-	"log"
 	"os"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -67,6 +66,6 @@ func (d *Database) GetToken(db *leveldb.DB) (string, error) {
 		return "", err
 	}
 
-	log.Println("token: ", string(token))
+	// log.Println("token: ", string(token))
 	return string(token), nil
 }
