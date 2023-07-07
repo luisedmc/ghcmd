@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -11,7 +12,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v53/github"
 	"github.com/knipferrc/teacup/statusbar"
+	"github.com/luisedmc/ghcmd/db"
 	"github.com/luisedmc/ghcmd/tui"
+	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type model struct {
@@ -37,6 +40,8 @@ type model struct {
 	searchInputsState bool
 	createInputs      []textinput.Model
 	createInputsState bool
+
+	database *leveldb.DB
 }
 
 type service struct {
@@ -53,35 +58,60 @@ type service struct {
 func StartGHCMD() model {
 	ctx := context.Background()
 
+	db, err := db.OpenDB()
+	if err != nil {
+		log.Println(err)
+	}
+
+	s := service{}
+
+	token, _ := db.GetToken(db.Conn)
+	if token == "" {
+		s = service{
+			ctx:          ctx,
+			errorMessage: "",
+			token:        "",
+		}
+	}
+
 	l := tui.CustomList{
 		Choices: tui.Choices,
 	}
 
-	s := service{
+	s = service{
 		ctx:          ctx,
 		errorMessage: "",
-		token:        "",
+		token:        token,
 	}
 
 	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
 
-	return model{
-		keys:             tui.KeyMaps(),
-		help:             help.New(),
-		list:             l,
-		statusBar:        sb,
-		statusText:       s.errorMessage,
+	// Defining the model
+	m := model{
+		keys:       tui.KeyMaps(),
+		help:       help.New(),
+		list:       l,
+		statusBar:  sb,
+		statusText: s.errorMessage,
+
 		service:          s,
 		responseData:     &Repository{},
 		servicePerformed: false,
 
-		tokenInput:      tui.TokenInput(),
-		tokenInputState: true,
-
 		searchInputs: tui.SearchInputs(),
-
 		createInputs: tui.CreateInputs(),
+
+		database: db.Conn,
 	}
+	// If there's no token, render the token input
+	if s.token == "" {
+		m = model{
+			tokenInput:      tui.TokenInput(),
+			tokenInputState: true,
+		}
+	}
+
+	return m
 }
 
 func (m *model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
@@ -233,6 +263,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tokenInput.Blur()
 
 			token, em, s := FetchToken(m.tokenInput.Value())
+			err := m.database.Put([]byte("gh_token"), []byte(token), nil)
+			if err != nil {
+				log.Println(err)
+			}
 			m.service.token = token
 			m.service.errorMessage = em
 			m.service.status = s
@@ -283,10 +317,17 @@ func (m model) View() string {
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
 	// Render token input
-	if m.tokenInputState {
+	if m.tokenInputState && m.service.token == "" {
 		sb.WriteString("\n" + m.tokenInput.View() + "\n")
 	} else {
 		sb.WriteString("\n")
+		// Render list of services
+		sb.WriteString(tui.ListStyle.Render(m.list.View()))
+		if m.searchInputsState {
+			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
+		} else if m.createInputsState {
+			sb.WriteString("\n" + m.createInputs[0].View() + "\n" + m.createInputs[1].View() + "\n")
+		}
 	}
 
 	// Render custom error message
@@ -299,17 +340,6 @@ func (m model) View() string {
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
 	case "Repository creation failed!":
 		sb.WriteString(tui.ErrorStyle.Render(m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occured.")) + "\n")
-	}
-
-	// If not typing the token, render the list of services
-	if !m.tokenInputState {
-		// Render list of services
-		sb.WriteString(tui.ListStyle.Render(m.list.View()))
-		if m.searchInputsState {
-			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
-		} else if m.createInputsState {
-			sb.WriteString("\n" + m.createInputs[0].View() + "\n" + m.createInputs[1].View() + "\n")
-		}
 	}
 
 	// Render service response
