@@ -22,6 +22,7 @@ Tools and Libraries used:
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - [Bubbles](https://github.com/charmbracelet/bubbles)
 - [teacup](https://github.com/mistakenelf/teacup)
+- [goleveldb](https://github.com/syndtr/goleveldb)
 
 ## :zap: Usage
 
@@ -31,6 +32,7 @@ About the application, it's actually really simple. The status bar at the bottom
 
 ## :dart: Features
 
+All the main functionalities are implemented by now. <br>
 In the current version, you can:
 
 | Service             | Description                                   |
@@ -38,16 +40,22 @@ In the current version, you can:
 | `Search Repository` | Search for a specific repository from an user |
 | `Create Repository` | Create a repository in your GitHub account    |
 
+Also, your API Key is stored locally in a database. There's no option to change it yet, so if you want to insert a new one you will need to delete the database file. It is located at `./db/data`
+
 For now, it is a work in progress and only supports a few commands. I will be always trying to add more features and improve the existing ones.
 
 ## :camera_flash: Screenshots
 
 <div align="center">
-    Main view</br>
-    <img src="/docs/main.png" alt="Main view" width=700 height=400>
+    Main view<br>
+    <img src="/docs/main.png" alt="main view" width=700 height=400>
+
+    This is how a successful search looks like<br>
+    <img src="/docs/example.gif" alt="search example">
+
 </div>
 
-One day I might improve the TUI...
+I have ideas to improve the TUI, make more pretty but for it's working fine (a few bugs here and there but nothing that breaks the application).
 
 ## :page_facing_up: License
 
