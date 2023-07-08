@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -57,12 +56,7 @@ type service struct {
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() model {
 	ctx := context.Background()
-
-	db, err := db.OpenDB()
-	if err != nil {
-		log.Println(err)
-	}
-
+	db, _ := db.OpenDB()
 	s := service{}
 
 	token, _ := db.GetToken(db.Conn)
@@ -114,8 +108,8 @@ func StartGHCMD() model {
 	return m
 }
 
-func (m *model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
-	cmds := make([]tea.Cmd, len(m.searchInputs))
+func (m model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
+	cmds := make([]tea.Cmd, 2)
 
 	if isSearch {
 		for i := range m.searchInputs {
@@ -133,24 +127,20 @@ func (m *model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
 func (m model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) (tea.Model, tea.Cmd) {
 	s := msg.String()
 
-	if s == "enter" && focusIndex == len(inputs) {
-		return m, nil
-	}
-
 	if s == "up" {
 		focusIndex--
+		if focusIndex < 0 {
+			focusIndex = len(inputs) - 1
+		}
 	} else {
 		focusIndex++
-	}
-
-	if focusIndex > len(inputs) {
-		focusIndex = 0
-	} else if focusIndex < 0 {
-		focusIndex = len(inputs)
+		if focusIndex >= len(inputs) {
+			focusIndex = 0
+		}
 	}
 
 	cmds := make([]tea.Cmd, len(inputs))
-	for i := 0; i <= len(inputs)-1; i++ {
+	for i := 0; i < len(inputs); i++ {
 		if i == focusIndex {
 			cmds[i] = inputs[i].Focus()
 			inputs[i].PromptStyle = tui.FocusedStyle
@@ -179,10 +169,9 @@ func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-// / Update handle IO and commands
+// Update handle IO and commands
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.statusBarWidth = msg.Width
@@ -201,7 +190,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.CursorDown()
 
 		case "enter":
-			if m.searchInputsState {
+			if m.searchInputsState && m.searchInputs[0].Value() != "" && m.searchInputs[1].Value() != "" {
 				m.searchInputsState = false
 				// Perform the search
 				m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
@@ -213,7 +202,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.servicePerformed = true
 				return m, nil
 
-			} else if m.createInputsState {
+			} else if m.createInputsState && m.createInputs[0].Value() != "" && m.createInputs[1].Value() != "" {
 				m.createInputsState = false
 				// Perform the creation
 				res, msg, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
@@ -265,7 +254,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			token, em, s := FetchToken(m.tokenInput.Value())
 			err := m.database.Put([]byte("gh_token"), []byte(token), nil)
 			if err != nil {
-				log.Println(err)
+				m.service.errorMessage = err.Error()
 			}
 			m.service.token = token
 			m.service.errorMessage = em
@@ -297,14 +286,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
+	m.tokenInput, _ = m.tokenInput.Update(msg)
+
 	var cmd tea.Cmd
 	if m.searchInputsState {
 		cmd = m.updateInputs(msg, true)
 	} else {
 		cmd = m.updateInputs(msg, false)
 	}
-
-	m.tokenInput, _ = m.tokenInput.Update(msg)
 
 	return m, cmd
 }
@@ -363,9 +352,9 @@ func (m model) View() string {
 	// Update the status bar after user input
 	m.statusBar.SetSize(m.statusBarWidth)
 	if m.statusText == "" {
-		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
 	} else {
-		m.statusBar.SetContent(m.statusText, fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
 	}
 
 	// Return the final view
