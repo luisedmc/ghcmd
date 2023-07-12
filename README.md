@@ -4,10 +4,6 @@
 
 **Forget your browser, use GitHub from the terminal.**
 
-<!-- [About](#about) •
-[Usage](#usage) •
-[Screenshots](#screenshots) -->
-
 </div>
 
 ## :pushpin: About
@@ -24,11 +20,24 @@ Tools and Libraries used:
 - [teacup](https://github.com/mistakenelf/teacup)
 - [goleveldb](https://github.com/syndtr/goleveldb)
 
+## :rocket: Installation
+
+```
+#  Clone the repository
+git clone https://github.com/luisedmc/ghcmd.git
+
+#  Go to the project directory
+cd ghcmd
+
+#  Run the application
+go run .
+```
+
+You can also build the application and run it as a binary file in any directory. To do so, you build using `go build` and you can check [here](https://zwbetz.com/how-to-add-a-binary-to-your-path-on-macos-linux-windows/) how to add the binary to your path.
+
 ## :zap: Usage
 
-First of all, you will need a GitHub API Key. You can know more about and get one [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) and also check the [GitHub API Documentation](https://developer.github.com/v3/).
-
-About the application, it's actually really simple. The status bar at the bottom of the screen shows your API Key status and how to navigate through the application. Check the Screenshots section to see how it looks like.
+The only thing you need is a GitHub API Key. You can know more about and get one [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#creating-a-personal-access-token-classic) and also check the [GitHub API Documentation](https://developer.github.com/v3/). The first time you run the application, you will be asked to insert your token. After that, you will be able to use the application.
 
 ## :dart: Features
 
@@ -50,8 +59,6 @@ For now, it is a work in progress and only supports a few commands. I will be al
     This is how a successful search looks like<br>
     <img src="/docs/example.gif" width=700 height=400>
 </div>
-
-I have ideas to improve the TUI, make more pretty but for it's working fine (a few bugs here and there but nothing that breaks the application).
 
 ## :page_facing_up: License
 
