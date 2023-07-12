@@ -16,7 +16,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-type model struct {
+type Model struct {
 	height int
 
 	help help.Model
@@ -54,22 +54,26 @@ type service struct {
 }
 
 // StartGHCMD initialize the tui by returning a model
-func StartGHCMD() model {
+func StartGHCMD() Model {
 	ctx := context.Background()
-	db, _ := db.OpenDB()
+	database, _ := db.OpenDB()
+	token, _ := database.GetToken(database.Conn)
 	s := service{}
 
-	token, _ := db.GetToken(db.Conn)
 	if token == "" {
-		s = service{
-			ctx:          ctx,
-			errorMessage: "",
-			token:        "",
+		// Render the token input and wait for user input
+		t := tui.TokenInput()
+		t.Focus()
+		m := Model{
+			keys:            tui.KeyMaps(),
+			help:            help.New(),
+			list:            tui.CustomList{Choices: tui.Choices},
+			statusBar:       tui.StatusBar("", "", false),
+			tokenInput:      t,
+			tokenInputState: true,
+			database:        database.Conn,
 		}
-	}
-
-	l := tui.CustomList{
-		Choices: tui.Choices,
+		return m
 	}
 
 	s = service{
@@ -78,37 +82,28 @@ func StartGHCMD() model {
 		token:        token,
 	}
 
+	l := tui.CustomList{Choices: tui.Choices}
 	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
 
 	// Defining the model
-	m := model{
-		keys:       tui.KeyMaps(),
-		help:       help.New(),
-		list:       l,
-		statusBar:  sb,
-		statusText: s.errorMessage,
-
+	m := Model{
+		keys:             tui.KeyMaps(),
+		help:             help.New(),
+		list:             l,
+		statusBar:        sb,
+		statusText:       s.errorMessage,
 		service:          s,
 		responseData:     &Repository{},
 		servicePerformed: false,
-
-		searchInputs: tui.SearchInputs(),
-		createInputs: tui.CreateInputs(),
-
-		database: db.Conn,
-	}
-	// If there's no token, render the token input
-	if s.token == "" {
-		m = model{
-			tokenInput:      tui.TokenInput(),
-			tokenInputState: true,
-		}
+		searchInputs:     tui.SearchInputs(),
+		createInputs:     tui.CreateInputs(),
+		database:         database.Conn,
 	}
 
 	return m
 }
 
-func (m model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
+func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
 	cmds := make([]tea.Cmd, 2)
 
 	if isSearch {
@@ -124,7 +119,7 @@ func (m model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
 	return tea.Batch(cmds...)
 }
 
-func (m model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) (tea.Model, tea.Cmd) {
+func (m Model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) (tea.Model, tea.Cmd) {
 	s := msg.String()
 
 	if s == "up" {
@@ -164,13 +159,13 @@ func (m model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) 
 	return m, tea.Batch(cmds...)
 }
 
-// Init run any intial IO on program start
-func (m model) Init() tea.Cmd {
+// Init run any initial IO on program start
+func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
 // Update handle IO and commands
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
@@ -299,7 +294,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View returns the text UI to be output to the terminal
-func (m model) View() string {
+func (m Model) View() string {
 	var sb strings.Builder
 
 	// Render main
@@ -330,7 +325,7 @@ func (m model) View() string {
 	case "Repository already exists!":
 		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
 	case "Repository creation failed!":
-		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occured.")) + "\n")
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occurred.")) + "\n")
 	}
 
 	// Render service response
