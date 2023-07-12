@@ -58,49 +58,45 @@ func StartGHCMD() Model {
 	ctx := context.Background()
 	database, _ := db.OpenDB()
 	token, _ := database.GetToken(database.Conn)
-	s := service{}
 
-	if token == "" {
-		// Render the token input and wait for user input
-		t := tui.TokenInput()
-		t.Focus()
-		m := Model{
-			keys:            tui.KeyMaps(),
-			help:            help.New(),
-			list:            tui.CustomList{Choices: tui.Choices},
-			statusBar:       tui.StatusBar("", "", false),
-			tokenInput:      t,
-			tokenInputState: true,
-			database:        database.Conn,
-		}
-		return m
-	}
-
-	s = service{
-		ctx:          ctx,
-		errorMessage: "",
-		token:        token,
+	s := service{
+		ctx:   ctx,
+		token: token,
 	}
 
 	l := tui.CustomList{Choices: tui.Choices}
 	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
 
-	// Defining the model
-	m := Model{
-		keys:             tui.KeyMaps(),
-		help:             help.New(),
-		list:             l,
-		statusBar:        sb,
-		statusText:       s.errorMessage,
-		service:          s,
-		responseData:     &Repository{},
-		servicePerformed: false,
-		searchInputs:     tui.SearchInputs(),
-		createInputs:     tui.CreateInputs(),
-		database:         database.Conn,
+	if token == "" {
+		t := tui.TokenInput()
+		m := Model{
+			keys:            tui.KeyMaps(),
+			help:            help.New(),
+			list:            l,
+			statusBar:       sb,
+			statusText:      s.errorMessage,
+			service:         s,
+			tokenInput:      t,
+			tokenInputState: true,
+			searchInputs:    tui.SearchInputs(),
+			createInputs:    tui.CreateInputs(),
+			database:        database.Conn,
+		}
+		return m
+	} else {
+		m := Model{
+			keys:         tui.KeyMaps(),
+			help:         help.New(),
+			list:         l,
+			statusBar:    sb,
+			statusText:   s.errorMessage,
+			service:      s,
+			searchInputs: tui.SearchInputs(),
+			createInputs: tui.CreateInputs(),
+			database:     database.Conn,
+		}
+		return m
 	}
-
-	return m
 }
 
 func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
