@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -89,7 +90,7 @@ func StartGHCMD() Model {
 			help:         help.New(),
 			list:         l,
 			statusBar:    sb,
-			statusText:   s.errorMessage,
+			statusText:   "Valid Token",
 			service:      s,
 			searchInputs: tui.SearchInputs(),
 			createInputs: tui.CreateInputs(),
@@ -289,12 +290,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func titleASCII() string {
+	t, err := os.ReadFile("docs/titleascii.txt")
+	if err != nil {
+		return "Github CMD"
+	}
+
+	return string(t)
+}
+
+func (m Model) statusBarKeys() string {
+	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
+}
+
 // View returns the text UI to be output to the terminal
 func (m Model) View() string {
 	var sb strings.Builder
 
 	// Render main
-	sb.WriteString(tui.TitleStyle.Render("Github CMD"))
+	sb.WriteString(tui.TitleStyle.Render(titleASCII()))
 	sb.WriteRune('\n')
 	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
@@ -335,7 +349,7 @@ func (m Model) View() string {
 
 		// Create
 		if m.service.url != nil {
-			sb.WriteString("\n" + m.service.message + "\n")
+			sb.WriteString("\n " + m.service.message + "\n")
 			sb.WriteString("Repository URL: " + *m.service.url + "\n")
 		}
 	}
@@ -343,9 +357,9 @@ func (m Model) View() string {
 	// Update the status bar after user input
 	m.statusBar.SetSize(m.statusBarWidth)
 	if m.statusText == "" {
-		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+		m.statusBar.SetContent("Token Status", m.statusBarKeys(), "", "")
 	} else {
-		m.statusBar.SetContent("Token Status", fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc), "", "")
+		m.statusBar.SetContent(m.statusText, m.statusBarKeys(), "", "")
 	}
 
 	// Return the final view
