@@ -12,9 +12,9 @@ func StatusBar(apiKey string, statusText string, status bool) statusbar.Model {
 				Foreground: StatusBarForegroundErrorStyle,
 				Background: StatusBarBackgroundErrorStyle,
 			},
-			DefaultStatusBarSyle,
-			DefaultStatusBarSyle,
-			DefaultStatusBarSyle,
+			DefaultStatusBarStyle,
+			DefaultStatusBarStyle,
+			DefaultStatusBarStyle,
 		)
 	} else {
 		sb = statusbar.New(
@@ -22,9 +22,9 @@ func StatusBar(apiKey string, statusText string, status bool) statusbar.Model {
 				Foreground: StatusBarForegroundSuccessStyle,
 				Background: StatusBarBackgroundSuccessStyle,
 			},
-			DefaultStatusBarSyle,
-			DefaultStatusBarSyle,
-			DefaultStatusBarSyle,
+			DefaultStatusBarStyle,
+			DefaultStatusBarStyle,
+			DefaultStatusBarStyle,
 		)
 	}
 
