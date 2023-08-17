@@ -10,7 +10,8 @@ import (
 
 // Repository represents a Github repository
 type Repository struct {
-	FullName    string
+	Owner       string
+	OwnerURL    string
 	Description string
 	URL         string
 }
@@ -29,8 +30,13 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 		return nil
 	}
 
+	if *repository.Private {
+		return nil
+	}
+
 	repositoryData := &Repository{
-		FullName:    *repository.Owner.HTMLURL,
+		Owner:       *repository.Owner.Login,
+		OwnerURL:    *repository.Owner.HTMLURL,
 		Description: *repository.Description,
 		URL:         *repository.HTMLURL,
 	}
