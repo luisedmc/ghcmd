@@ -36,12 +36,10 @@ func TestToken(githubKey string) []byte {
 }
 
 // Token returns a token source
-func TokenSource(tokenInput string) (oauth2.TokenSource, error) {
-	tokenSource := oauth2.StaticTokenSource(
+func TokenSource(tokenInput string) oauth2.TokenSource {
+	return oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: tokenInput},
 	)
-
-	return tokenSource, nil
 }
 
 // TokenClient returns a HTTP Client from a context and a token source
