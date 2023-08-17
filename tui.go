@@ -149,7 +149,7 @@ func (m Model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) 
 		m.searchInputs = inputs
 		m.focusIndex = focusIndex
 	} else if m.createInputsState {
-		m.searchInputs = inputs
+		m.createInputs = inputs
 		m.focusIndex = focusIndex
 	}
 
@@ -216,7 +216,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// Create a new client if it doesn't exist
 				if m.service.client == nil {
-					ts, _ := TokenSource(m.service.token)
+					ts := TokenSource(m.service.token)
 					tc := TokenClient(m.service.ctx, ts)
 					client := GithubClient(tc)
 					m.service.client = client
@@ -342,7 +342,7 @@ func (m Model) View() string {
 	if m.servicePerformed {
 		// Search
 		if m.responseData != nil {
-			sb.WriteString("\nOwner: " + m.responseData.FullName + "\n")
+			sb.WriteString("\nOwner: " + m.responseData.Owner + " - " + m.responseData.OwnerURL + "\n")
 			sb.WriteString("Repository description: " + m.responseData.Description + "\n")
 			sb.WriteString("Repository URL: " + m.responseData.URL + "\n")
 		}
