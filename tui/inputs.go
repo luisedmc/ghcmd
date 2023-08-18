@@ -1,6 +1,8 @@
 package tui
 
-import "github.com/charmbracelet/bubbles/textinput"
+import (
+	"github.com/charmbracelet/bubbles/textinput"
+)
 
 // TokenInput creates a text input for the token
 func TokenInput() textinput.Model {
@@ -18,6 +20,7 @@ func SearchInputs() []textinput.Model {
 	ui.Placeholder = "username"
 	ui.Focus()
 	ui.CharLimit = 39
+	ui.TextStyle = FocusedStyle
 
 	ri := textinput.New()
 	ri.Placeholder = "repository"
@@ -32,6 +35,7 @@ func CreateInputs() []textinput.Model {
 	rn.Placeholder = "repository name"
 	rn.Focus()
 	rn.CharLimit = 100
+	rn.TextStyle = FocusedStyle
 
 	p := textinput.New()
 	p.Placeholder = "private (y/n)"

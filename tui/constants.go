@@ -50,5 +50,5 @@ var (
 
 	// Input colors
 	NoStyle      = lipgloss.NewStyle()
-	FocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	FocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFA2"))
 )
