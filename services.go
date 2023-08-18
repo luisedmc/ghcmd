@@ -34,6 +34,8 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 		return nil
 	}
 
+	checkRepositoryInfoNil(repository)
+
 	repositoryData := &Repository{
 		Owner:       *repository.Owner.Login,
 		OwnerURL:    *repository.Owner.HTMLURL,
@@ -42,6 +44,16 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 	}
 
 	return repositoryData
+}
+
+func checkRepositoryInfoNil(repository *github.Repository) {
+	if repository.Description == nil {
+		repository.Description = github.String("No description provided.")
+	}
+
+	if repository.HTMLURL == nil || *repository.HTMLURL == "" {
+		repository.HTMLURL = github.String("No URL provided.")
+	}
 }
 
 // CreateRepository creates a new repository in the user account.
