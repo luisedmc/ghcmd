@@ -61,6 +61,8 @@ func CreateRepository(ctx context.Context, githubClient *github.Client, repoName
 	isPrivateBool := false
 	if isPrivate == "y" {
 		isPrivateBool = true
+	} else if isPrivate != "n" && isPrivate != "" {
+		return nil, "Invalid input!", nil
 	}
 
 	newRepository := &github.Repository{

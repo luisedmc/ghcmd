@@ -7,7 +7,7 @@ import (
 var (
 	Choices = []choice{
 		{title: "Search Repository", desc: "Search for an user repository from Github."},
-		{title: "Create Repository", desc: "Create a repository for your Github account."},
+		{title: "Create Repository", desc: "Create a repository in your Github account."},
 	}
 )
 

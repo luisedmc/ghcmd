@@ -167,7 +167,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.height = msg.Height
 		m.statusBarWidth = msg.Width
-		m.statusBar.SetSize(msg.Width)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -176,10 +175,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "up", "k":
-			m.list.CursorUp()
+			if !m.createInputsState && !m.searchInputsState {
+				m.list.CursorUp()
+			}
 
 		case "down", "j":
-			m.list.CursorDown()
+			if !m.createInputsState && !m.searchInputsState {
+				m.list.CursorDown()
+			}
 
 		case "enter":
 			if m.searchInputsState && m.searchInputs[0].Value() != "" && m.searchInputs[1].Value() != "" {
@@ -300,7 +303,7 @@ func titleASCII() string {
 }
 
 func (m Model) statusBarKeys() string {
-	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
+	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
 }
 
 // View returns the text UI to be output to the terminal
@@ -310,7 +313,7 @@ func (m Model) View() string {
 	// Render main
 	sb.WriteString(tui.TitleStyle.Render(titleASCII()))
 	sb.WriteRune('\n')
-	sb.WriteString("Welcome to Github CMD, a TUI for Github written in Golang.\n")
+	sb.WriteString("    Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
 	// Render token input
 	if m.tokenInputState && m.service.token == "" {
@@ -327,15 +330,21 @@ func (m Model) View() string {
 	}
 
 	// Render custom error message
-	switch m.service.errorMessage {
-	case "There's an error with your Github Token!":
+	if m.service.errorMessage != "Valid Token" && m.service.errorMessage != "" {
 		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
-	case "Repository not found!":
-		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
-	case "Repository already exists!":
-		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
-	case "Repository creation failed!":
-		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occurred.")) + "\n")
+	} else {
+		switch m.service.message {
+		case "There's an error with your Github Token!":
+			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
+		case "Repository not found!":
+			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
+		case "Repository already exists!":
+			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
+		case "Repository creation failed!":
+			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occurred.")) + "\n")
+		case "Invalid input!":
+			sb.WriteString(tui.ErrorStyle.Render("\n"+tui.AlertStyle.Render("\nInvalid private input, please try again.")) + "\n")
+		}
 	}
 
 	// Render service response

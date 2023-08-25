@@ -7,11 +7,13 @@ import (
 
 var (
 	// Application general colors
+	MainColor = lipgloss.Color("#00FFA2")
+
 	TitleStyle = lipgloss.NewStyle().
 			Bold(true).
 			Italic(true).
 			Align(lipgloss.Center).
-			Foreground(lipgloss.Color("#00FFA2"))
+			Foreground(MainColor)
 	ErrorStyle = TitleStyle.Copy().
 			Italic(false).
 			Align(lipgloss.Left).
@@ -50,5 +52,5 @@ var (
 
 	// Input colors
 	NoStyle      = lipgloss.NewStyle()
-	FocusedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FFA2"))
+	FocusedStyle = lipgloss.NewStyle().Foreground(MainColor)
 )

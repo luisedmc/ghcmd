@@ -4,7 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 )
 
-// TokenInput creates a text input for the token
+// TokenInput defines a text input for the token
 func TokenInput() textinput.Model {
 	ti := textinput.New()
 	ti.Placeholder = "your api token (you can paste it)"
@@ -14,7 +14,7 @@ func TokenInput() textinput.Model {
 	return ti
 }
 
-// SearchInputs creates two text inputs for the username and repository
+// SearchInputs defines two text inputs for the username and repository
 func SearchInputs() []textinput.Model {
 	ui := textinput.New()
 	ui.Placeholder = "username"
@@ -29,7 +29,7 @@ func SearchInputs() []textinput.Model {
 	return []textinput.Model{ui, ri}
 }
 
-// CreateInputs creates two text inputs for the repository name and if it's private
+// CreateInputs defines two text inputs for the repository name and if it's private
 func CreateInputs() []textinput.Model {
 	rn := textinput.New()
 	rn.Placeholder = "repository name"
