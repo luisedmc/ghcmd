@@ -5,7 +5,7 @@ go 1.21.0
 require (
 	github.com/charmbracelet/bubbles v0.16.1
 	github.com/charmbracelet/bubbletea v0.24.2
-	github.com/charmbracelet/lipgloss v0.7.1
+	github.com/charmbracelet/lipgloss v0.8.0
 	github.com/google/go-github/v53 v53.2.0
 	github.com/knipferrc/teacup v0.3.1
 	github.com/syndtr/goleveldb v1.0.0
