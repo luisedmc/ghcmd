@@ -17,7 +17,6 @@ Tools and Libraries used:
 - [GitHub API](https://developer.github.com/v3/)
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea)
 - [Bubbles](https://github.com/charmbracelet/bubbles)
-- [teacup](https://github.com/mistakenelf/teacup)
 - [goleveldb](https://github.com/syndtr/goleveldb)
 
 ## :rocket: Installation
