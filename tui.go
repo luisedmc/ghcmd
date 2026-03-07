@@ -11,7 +11,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v53/github"
-	"github.com/knipferrc/teacup/statusbar"
 	"github.com/luisedmc/ghcmd/db"
 	"github.com/luisedmc/ghcmd/tui"
 	"github.com/syndtr/goleveldb/leveldb"
@@ -25,7 +24,7 @@ type Model struct {
 	list tui.CustomList
 
 	statusText     string
-	statusBar      statusbar.Model
+	statusBar      tui.StatusBarModel
 	statusBarWidth int
 
 	service          service
@@ -374,7 +373,7 @@ func (m Model) View() string {
 	// Return the final view
 	return lipgloss.JoinVertical(
 		lipgloss.Top,
-		lipgloss.NewStyle().Height(m.height-statusbar.Height).Render(sb.String()),
+		lipgloss.NewStyle().Height(m.height-tui.StatusBarHeight).Render(sb.String()),
 		m.statusBar.View(),
 	)
 }
