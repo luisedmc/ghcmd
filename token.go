@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"os/exec"
-	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -16,10 +13,12 @@ func FetchToken(githubKey string) (string, string, bool) {
 		return "", "Unwritten Token", false
 	}
 
-	res := TestToken(githubKey)
+	statusCode, err := TestToken(githubKey)
+	if err != nil {
+		return "", "Error validating token", false
+	}
 
-	// Check if response contains "Bad credentials" == invalid API key
-	if strings.Contains(string(res), "Bad credentials") {
+	if statusCode == http.StatusUnauthorized {
 		return "", "Invalid Token", false
 	}
 
@@ -27,12 +26,20 @@ func FetchToken(githubKey string) (string, string, bool) {
 }
 
 // TestToken performs a request to the Github API to check if the token is valid
-func TestToken(githubKey string) []byte {
-	curlCmd := exec.Command("curl", "-v", "-H", fmt.Sprintf("Authorization: token %s", githubKey), "https://api.github.com/user/issues")
-	output, _ := curlCmd.CombinedOutput()
-	_ = curlCmd.Run()
+func TestToken(githubKey string) (int, error) {
+	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", "token "+githubKey)
 
-	return output
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode, nil
 }
 
 // Token returns a token source
