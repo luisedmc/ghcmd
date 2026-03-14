@@ -13,6 +13,9 @@ var (
 			Italic(true).
 			Align(lipgloss.Center).
 			Foreground(MainColor)
+	SubtitleStyle = lipgloss.NewStyle().
+			Align(lipgloss.Center).
+			Foreground(lipgloss.AdaptiveColor{Light: "#969696", Dark: "#969696"})
 	ErrorStyle = TitleStyle.Copy().
 			Italic(false).
 			Align(lipgloss.Left).

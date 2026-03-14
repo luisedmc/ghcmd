@@ -56,8 +56,16 @@ type service struct {
 // StartGHCMD initialize the tui by returning a model
 func StartGHCMD() Model {
 	ctx := context.Background()
-	database, _ := db.OpenDB()
-	token, _ := database.GetToken(database.Conn)
+	database, err := db.OpenDB()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
+		os.Exit(1)
+	}
+	token, err := database.GetToken(database.Conn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error retrieving token from database: %v\n", err)
+		os.Exit(1)
+	}
 
 	s := service{
 		ctx:   ctx,
@@ -310,9 +318,10 @@ func (m Model) View() string {
 	var sb strings.Builder
 
 	// Render main
-	sb.WriteString(tui.TitleStyle.Render(titleASCII()))
+	sb.WriteString(tui.TitleStyle.Width(m.statusBarWidth).Render(titleASCII()))
+	sb.WriteString("\n\n")
+	sb.WriteString(tui.SubtitleStyle.Width(m.statusBarWidth).Render("Welcome to Github CMD, a TUI for Github written in Golang."))
 	sb.WriteRune('\n')
-	sb.WriteString("    Welcome to Github CMD, a TUI for Github written in Golang.\n")
 
 	// Render token input
 	if m.tokenInputState && m.service.token == "" {
