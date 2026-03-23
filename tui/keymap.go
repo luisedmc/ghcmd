@@ -16,7 +16,7 @@ func KeyMaps() KeyMap {
 	k := KeyMap{
 		Up:   key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
 		Down: key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-		Esc:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel")),
+		Esc:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel/clear")),
 		Tab:  key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next field")),
 		Quit: key.NewBinding(key.WithKeys("ctrl+c"), key.WithHelp("ctrl+c", "exit")),
 	}
