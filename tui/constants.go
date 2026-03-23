@@ -55,4 +55,39 @@ var (
 	// Input colors
 	NoStyle      = lipgloss.NewStyle()
 	FocusedStyle = lipgloss.NewStyle().Foreground(MainColor)
+
+	// Result card styles
+	CardStyle = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(MainColor).
+			Padding(1, 2).
+			MarginTop(1).
+			MarginLeft(2)
+
+	CardHeaderStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(MainColor)
+
+	CardOwnerStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#969696"))
+
+	CardDescStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF"))
+
+	CardLabelStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#969696"))
+
+	CardValueStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFFFF"))
+
+	CardStatStyle = lipgloss.NewStyle().
+			Foreground(MainColor).
+			Bold(true)
+
+	CardURLStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#969696")).
+			Italic(true)
+
+	CardDividerStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#3c3836"))
 )

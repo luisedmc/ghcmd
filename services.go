@@ -10,10 +10,17 @@ import (
 
 // Repository represents a Github repository
 type Repository struct {
+	Name        string
 	Owner       string
 	OwnerURL    string
 	Description string
 	URL         string
+	Stars       int
+	Forks       int
+	Language    string
+	OpenIssues  int
+	CreatedAt   string
+	License     string
 }
 
 // GithubClient returns a new Github client
@@ -37,10 +44,20 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 	checkRepositoryInfoNil(repository)
 
 	repositoryData := &Repository{
+		Name:        repository.GetName(),
 		Owner:       *repository.Owner.Login,
 		OwnerURL:    *repository.Owner.HTMLURL,
 		Description: *repository.Description,
 		URL:         *repository.HTMLURL,
+		Stars:       repository.GetStargazersCount(),
+		Forks:       repository.GetForksCount(),
+		Language:    repository.GetLanguage(),
+		OpenIssues:  repository.GetOpenIssuesCount(),
+		CreatedAt:   repository.GetCreatedAt().Format("Jan 2, 2006"),
+	}
+
+	if repository.License != nil && repository.License.Name != nil {
+		repositoryData.License = *repository.License.Name
 	}
 
 	return repositoryData

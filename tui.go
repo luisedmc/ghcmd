@@ -53,7 +53,7 @@ type service struct {
 	url          *string
 }
 
-// StartGHCMD initialize the tui by returning a model
+// StartGHCMD initializes the TUI
 func StartGHCMD() Model {
 	ctx := context.Background()
 	database, err := db.OpenDB()
@@ -72,39 +72,25 @@ func StartGHCMD() Model {
 		token: token,
 	}
 
-	l := tui.CustomList{Choices: tui.Choices}
-	sb := tui.StatusBar(s.token, s.errorMessage, s.status)
+	m := Model{
+		keys:         tui.KeyMaps(),
+		help:         help.New(),
+		list:         tui.CustomList{Choices: tui.Choices},
+		statusText:   "Valid Token",
+		statusBar:    tui.StatusBar(s.token, s.errorMessage, s.status),
+		service:      s,
+		searchInputs: tui.SearchInputs(),
+		createInputs: tui.CreateInputs(),
+		database:     database.Conn,
+	}
 
 	if token == "" {
-		t := tui.TokenInput()
-		m := Model{
-			keys:            tui.KeyMaps(),
-			help:            help.New(),
-			list:            l,
-			statusBar:       sb,
-			statusText:      s.errorMessage,
-			service:         s,
-			tokenInput:      t,
-			tokenInputState: true,
-			searchInputs:    tui.SearchInputs(),
-			createInputs:    tui.CreateInputs(),
-			database:        database.Conn,
-		}
-		return m
-	} else {
-		m := Model{
-			keys:         tui.KeyMaps(),
-			help:         help.New(),
-			list:         l,
-			statusBar:    sb,
-			statusText:   "Valid Token",
-			service:      s,
-			searchInputs: tui.SearchInputs(),
-			createInputs: tui.CreateInputs(),
-			database:     database.Conn,
-		}
-		return m
+		m.tokenInput = tui.TokenInput()
+		m.statusText = s.errorMessage
+		m.tokenInputState = true
 	}
+
+	return m
 }
 
 func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
@@ -139,7 +125,7 @@ func (m Model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) 
 	}
 
 	cmds := make([]tea.Cmd, len(inputs))
-	for i := 0; i < len(inputs); i++ {
+	for i := range inputs {
 		if i == focusIndex {
 			cmds[i] = inputs[i].Focus()
 			inputs[i].PromptStyle = tui.FocusedStyle
@@ -270,11 +256,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.searchInputsState || m.createInputsState {
 				m.createInputsState = false
 				m.searchInputsState = false
-				for i := 0; i < 2; i++ {
+				for i := range 2 {
 					m.searchInputs[i].SetValue("")
 					m.createInputs[i].SetValue("")
 				}
 				return m, nil
+			}
+
+			if m.responseData != nil {
+				m.servicePerformed = false
+				m.responseData = nil
+				m.service.url = nil
+				m.service.message = ""
+				return m, tea.ClearScreen
 			}
 
 		case "tab":
@@ -359,9 +353,21 @@ func (m Model) View() string {
 	if m.servicePerformed {
 		// Search
 		if m.responseData != nil {
-			sb.WriteString("\nOwner: " + m.responseData.Owner + " - " + m.responseData.OwnerURL + "\n")
-			sb.WriteString("Repository description: " + m.responseData.Description + "\n")
-			sb.WriteString("Repository URL: " + m.responseData.URL + "\n")
+			cardData := tui.RepositoryCard{
+				Name:        m.responseData.Name,
+				Owner:       m.responseData.Owner,
+				OwnerURL:    m.responseData.OwnerURL,
+				Description: m.responseData.Description,
+				URL:         m.responseData.URL,
+				Stars:       m.responseData.Stars,
+				Forks:       m.responseData.Forks,
+				Language:    m.responseData.Language,
+				OpenIssues:  m.responseData.OpenIssues,
+				CreatedAt:   m.responseData.CreatedAt,
+				License:     m.responseData.License,
+			}
+			sb.WriteString(tui.RenderRepoCard(cardData, m.statusBarWidth))
+			sb.WriteString("\n")
 		}
 
 		// Create
