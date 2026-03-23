@@ -41,18 +41,16 @@ func (l *CustomList) View() string {
 	var sb strings.Builder
 
 	for i, choice := range l.Choices {
-		styledTitle := TitleListStyle.Render(choice.title)
-		styledDesc := DescListStyle.Render(choice.desc)
+		title := TitleListStyle
+		description := DescListStyle
 
 		if i == l.Cursor {
-			styledTitle = TitleListSelected.Render(choice.title)
-			styledDesc = DescListSelected.Render(choice.desc)
-			sb.WriteString("  " + styledTitle + "\n")
-			sb.WriteString("  " + styledDesc + "\n\n")
-		} else {
-			sb.WriteString("  " + styledTitle + "\n")
-			sb.WriteString("  " + styledDesc + "\n\n")
+			title = TitleListSelected
+			description = DescListSelected
 		}
+
+		sb.WriteString("  " + title.Render(choice.title) + "\n")
+		sb.WriteString("  " + description.Render(choice.desc) + "\n\n")
 	}
 
 	return sb.String()
