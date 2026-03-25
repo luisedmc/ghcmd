@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -35,7 +36,7 @@ func OpenDB() (*Database, error) {
 func (d *Database) GetToken(db *leveldb.DB) (string, error) {
 	token, err := db.Get([]byte("gh_token"), nil)
 	if err != nil {
-		if err == leveldb.ErrNotFound {
+		if errors.Is(err, leveldb.ErrNotFound) {
 			return "", nil
 		}
 		return "", err

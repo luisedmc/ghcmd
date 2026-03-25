@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/google/go-github/v53/github"
 )
@@ -25,75 +26,68 @@ type Repository struct {
 
 // GithubClient returns a new Github client
 func GithubClient(tokenClient *http.Client) *github.Client {
-	githubClient := github.NewClient(tokenClient)
-
-	return githubClient
+	return github.NewClient(tokenClient)
 }
 
 // SearchRepository performs a search for a specific repository from an user and returns the repository information
-func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) *Repository {
+func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) (*Repository, error) {
 	repository, _, err := githubClient.Repositories.Get(ctx, user, repositoryName)
 	if err != nil {
-		return nil
+		var ghErr *github.ErrorResponse
+		if errors.As(err, &ghErr) && ghErr.Response.StatusCode == http.StatusNotFound {
+			return nil, ErrSearchNotFound
+		}
+		return nil, fmt.Errorf("failed to search repository: %w", err)
 	}
 
-	if *repository.Private {
-		return nil
+	if repository.GetPrivate() {
+		return nil, ErrSearchNotFound
 	}
-
-	checkRepositoryInfoNil(repository)
 
 	repositoryData := &Repository{
 		Name:        repository.GetName(),
-		Owner:       *repository.Owner.Login,
-		OwnerURL:    *repository.Owner.HTMLURL,
-		Description: *repository.Description,
-		URL:         *repository.HTMLURL,
+		Owner:       repository.GetOwner().GetLogin(),
+		OwnerURL:    repository.GetOwner().GetHTMLURL(),
+		Description: repository.GetDescription(),
+		URL:         repository.GetHTMLURL(),
 		Stars:       repository.GetStargazersCount(),
 		Forks:       repository.GetForksCount(),
 		Language:    repository.GetLanguage(),
 		OpenIssues:  repository.GetOpenIssuesCount(),
 		CreatedAt:   repository.GetCreatedAt().Format("Jan 2, 2006"),
+		License:     repository.GetLicense().GetName(),
 	}
 
-	if repository.License != nil && repository.License.Name != nil {
-		repositoryData.License = *repository.License.Name
-	}
-
-	return repositoryData
-}
-
-func checkRepositoryInfoNil(repository *github.Repository) {
-	if repository.Description == nil {
-		repository.Description = github.String("No description provided.")
-	}
-
-	if repository.HTMLURL == nil || *repository.HTMLURL == "" {
-		repository.HTMLURL = github.String("No URL provided.")
-	}
+	return repositoryData, nil
 }
 
 // CreateRepository creates a new repository in the user account.
-func CreateRepository(ctx context.Context, githubClient *github.Client, repoName string, isPrivate string) (*string, string, error) {
+func CreateRepository(ctx context.Context, githubClient *github.Client, repoName string, isPrivate string) (*string, error) {
 	isPrivateBool := false
 	if isPrivate == "y" {
 		isPrivateBool = true
 	} else if isPrivate != "n" && isPrivate != "" {
-		return nil, "Invalid input!", nil
+		return nil, ErrInvalidPrivateInput
 	}
 
 	newRepository := &github.Repository{
-		Name:    github.String(repoName),
-		Private: github.Bool(isPrivateBool),
+		Name:    &repoName,
+		Private: &isPrivateBool,
 	}
 
 	res, _, err := githubClient.Repositories.Create(ctx, "", newRepository)
 	if err != nil {
-		if strings.Contains(err.Error(), "422") {
-			return nil, "Repository already exists!", err
+		var ghErr *github.ErrorResponse
+		if errors.As(err, &ghErr) {
+			switch ghErr.Response.StatusCode {
+			case http.StatusUnprocessableEntity:
+				return nil, ErrRepoAlreadyExists
+			case http.StatusNotFound:
+				return nil, ErrRepoUnauthorized
+			}
 		}
-		return nil, "Repository creation failed!", err
+		return nil, ErrRepoCreateFailed
 	}
 
-	return res.HTMLURL, "Repository created successfully!", nil
+	return res.HTMLURL, nil
 }

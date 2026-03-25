@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -44,13 +45,15 @@ type Model struct {
 }
 
 type service struct {
-	ctx          context.Context
-	token        string
-	client       *github.Client
-	status       bool
-	message      string
-	errorMessage string
-	url          *string
+	ctx    context.Context
+	token  string
+	client *github.Client
+	status bool
+
+	tokenStatus string
+	message     string
+	lastErr     error
+	url         *string
 }
 
 // StartGHCMD initializes the TUI
@@ -77,7 +80,7 @@ func StartGHCMD() Model {
 		help:         help.New(),
 		list:         tui.CustomList{Choices: tui.Choices},
 		statusText:   "Valid Token",
-		statusBar:    tui.StatusBar(s.token, s.errorMessage, s.status),
+		statusBar:    tui.StatusBar(s.token, s.tokenStatus, s.status),
 		service:      s,
 		searchInputs: tui.SearchInputs(),
 		createInputs: tui.CreateInputs(),
@@ -86,7 +89,7 @@ func StartGHCMD() Model {
 
 	if token == "" {
 		m.tokenInput = tui.TokenInput()
-		m.statusText = s.errorMessage
+		m.statusText = ""
 		m.tokenInputState = true
 	}
 
@@ -181,24 +184,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.searchInputsState && m.searchInputs[0].Value() != "" && m.searchInputs[1].Value() != "" {
 				m.searchInputsState = false
 				// Perform the search
-				m.responseData = SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
-				if m.responseData == nil {
-					m.service.errorMessage = "Repository not found!"
+				responseData, err := SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
+				if err != nil {
+					m.service.lastErr = err
+					switch {
+					case errors.Is(err, ErrSearchNotFound):
+						m.service.message = "Repository not found!"
+					default:
+						m.service.message = "Failed to search repository!"
+					}
 					return m, nil
 				}
+				m.responseData = responseData
 				m.service.url = nil
+				m.service.lastErr = nil
+				m.service.message = ""
 				m.servicePerformed = true
 				return m, nil
 
 			} else if m.createInputsState && m.createInputs[0].Value() != "" && m.createInputs[1].Value() != "" {
 				m.createInputsState = false
 				// Perform the creation
-				res, msg, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
+				res, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
 				if err != nil {
-					m.service.errorMessage = msg
+					m.service.lastErr = err
+					switch {
+					case errors.Is(err, ErrInvalidPrivateInput):
+						m.service.message = "Invalid input!"
+					case errors.Is(err, ErrRepoAlreadyExists):
+						m.service.message = "Repository already exists!"
+					case errors.Is(err, ErrRepoUnauthorized):
+						m.service.message = "Token lacks permission to create repositories!"
+					case errors.Is(err, ErrRepoCreateFailed):
+						m.service.message = "Repository creation failed!"
+					}
+				} else {
+					m.service.lastErr = nil
+					m.service.message = "Repository created successfully!"
 				}
 				m.service.url = res
-				m.service.message = msg
 				m.responseData = nil
 				m.servicePerformed = true
 				return m, nil
@@ -207,7 +231,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.service.token == "" {
 					m.responseData = nil
 					m.servicePerformed = false
-					m.service.errorMessage = "There's an error with your Github Token!"
+					m.service.message = "There's an error with your Github Token!"
+					m.service.lastErr = ErrTokenEmpty
 					return m, nil
 				}
 				// Create a new client if it doesn't exist
@@ -220,7 +245,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch m.list.Cursor {
 				// Search Repository
 				case 0:
-					m.service.errorMessage = ""
+					m.service.message = ""
+					m.service.lastErr = nil
 					m.searchInputsState = true
 					m.searchInputs[0].SetValue("")
 					m.searchInputs[1].SetValue("")
@@ -228,7 +254,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 				// Create Repository
 				case 1:
-					m.service.errorMessage = ""
+					m.service.message = ""
+					m.service.lastErr = nil
 					m.createInputsState = true
 					m.createInputs[0].SetValue("")
 					m.createInputs[1].SetValue("")
@@ -239,18 +266,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tokenInputState = false
 			m.tokenInput.Blur()
 
-			token, em, s := FetchToken(m.tokenInput.Value())
-			err := m.database.Put([]byte("gh_token"), []byte(token), nil)
-			if err != nil {
-				m.service.errorMessage = err.Error()
+			token, err := FetchToken(m.tokenInput.Value())
+			if err == nil {
+				if dbErr := m.database.Put([]byte("gh_token"), []byte(token), nil); dbErr != nil {
+					m.service.message = "Failed to save token!"
+					m.service.lastErr = dbErr
+					return m, nil
+				}
 			}
 			m.service.token = token
-			m.service.errorMessage = em
-			m.service.status = s
+			m.service.status = err == nil
+
+			switch {
+			case errors.Is(err, ErrTokenEmpty):
+				m.service.tokenStatus = "Unwritten Token"
+			case errors.Is(err, ErrTokenTest):
+				m.service.tokenStatus = "Error validating token"
+			case errors.Is(err, ErrTokenInvalid):
+				m.service.tokenStatus = "Invalid Token"
+			default:
+				m.service.tokenStatus = "Valid Token"
+			}
 
 			// Updating status bar text
-			m.statusBar = tui.StatusBar(m.service.token, m.service.errorMessage, m.service.status)
-			m.statusText = m.service.errorMessage
+			m.statusBar = tui.StatusBar(m.service.token, m.service.tokenStatus, m.service.status)
+			m.statusText = m.service.tokenStatus
 
 		case "esc":
 			if m.searchInputsState || m.createInputsState {
@@ -263,11 +303,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
-			if m.responseData != nil {
+			if m.responseData != nil || m.servicePerformed || m.service.message != "" {
 				m.servicePerformed = false
 				m.responseData = nil
 				m.service.url = nil
 				m.service.message = ""
+				m.service.lastErr = nil
 				return m, tea.ClearScreen
 			}
 
@@ -331,22 +372,9 @@ func (m Model) View() string {
 		}
 	}
 
-	// Render custom error message
-	if m.service.errorMessage != "Valid Token" && m.service.errorMessage != "" {
-		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
-	} else {
-		switch m.service.message {
-		case "There's an error with your Github Token!":
-			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nCheck status bar for more details.")) + "\n")
-		case "Repository not found!":
-			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nThe repository searched was not found!")) + "\n")
-		case "Repository already exists!":
-			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nYou already have a repository with that name.")) + "\n")
-		case "Repository creation failed!":
-			sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.errorMessage, tui.AlertStyle.Render("\nAn error has occurred.")) + "\n")
-		case "Invalid input!":
-			sb.WriteString(tui.ErrorStyle.Render("\n"+tui.AlertStyle.Render("\nInvalid private input, please try again.")) + "\n")
-		}
+	// Render error message
+	if m.service.lastErr != nil && m.service.message != "" {
+		sb.WriteString(tui.ErrorStyle.Render("\n"+m.service.message) + "\n")
 	}
 
 	// Render service response

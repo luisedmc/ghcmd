@@ -7,22 +7,22 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// FetchToken returns a Github token, a status message and a status bool
-func FetchToken(githubKey string) (string, string, bool) {
+// FetchToken validates a Github token and returns it with an error if invalid
+func FetchToken(githubKey string) (string, error) {
 	if githubKey == "" {
-		return "", "Unwritten Token", false
+		return "", ErrTokenEmpty
 	}
 
 	statusCode, err := TestToken(githubKey)
 	if err != nil {
-		return "", "Error validating token", false
+		return "", ErrTokenTest
 	}
 
 	if statusCode == http.StatusUnauthorized {
-		return "", "Invalid Token", false
+		return "", ErrTokenInvalid
 	}
 
-	return githubKey, "Valid Token", true
+	return githubKey, nil
 }
 
 // TestToken performs a request to the Github API to check if the token is valid
