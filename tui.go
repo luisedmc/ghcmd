@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,12 +18,21 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+type serviceResultMsg struct {
+	responseData *Repository
+	url          *string
+	message      string
+	err          error
+}
+
 type Model struct {
 	height int
 
-	help help.Model
-	keys tui.KeyMap
-	list tui.CustomList
+	help    help.Model
+	keys    tui.KeyMap
+	list    tui.CustomList
+	spinner spinner.Model
+	loading bool
 
 	statusText     string
 	statusBar      tui.StatusBarModel
@@ -37,8 +47,8 @@ type Model struct {
 
 	focusIndex        int
 	searchInputs      []textinput.Model
-	searchInputsState bool
 	createInputs      []textinput.Model
+	searchInputsState bool
 	createInputsState bool
 
 	database *leveldb.DB
@@ -56,18 +66,18 @@ type service struct {
 	url         *string
 }
 
-// StartGHCMD initializes the TUI
-func StartGHCMD() Model {
+// StartGHCMD initializes the TUI and returns the model
+func StartGHCMD() (Model, error) {
 	ctx := context.Background()
 	database, err := db.OpenDB()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error opening database: %v\n", err)
-		os.Exit(1)
+		return Model{}, fmt.Errorf("opening database: %w", err)
 	}
-	token, err := database.GetToken(database.Conn)
+
+	token, err := database.GetToken()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error retrieving token from database: %v\n", err)
-		os.Exit(1)
+		database.Conn.Close()
+		return Model{}, fmt.Errorf("retrieving token: %w", err)
 	}
 
 	s := service{
@@ -75,10 +85,15 @@ func StartGHCMD() Model {
 		token: token,
 	}
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(tui.MainColor)
+
 	m := Model{
 		keys:         tui.KeyMaps(),
 		help:         help.New(),
 		list:         tui.CustomList{Choices: tui.Choices},
+		spinner:      sp,
 		statusText:   "Valid Token",
 		statusBar:    tui.StatusBar(s.token, s.tokenStatus, s.status),
 		service:      s,
@@ -93,7 +108,12 @@ func StartGHCMD() Model {
 		m.tokenInputState = true
 	}
 
-	return m
+	return m, nil
+}
+
+// Close releases resources held by the Model.
+func (m Model) Close() error {
+	return m.database.Close()
 }
 
 func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
@@ -103,10 +123,10 @@ func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
 		for i := range m.searchInputs {
 			m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
 		}
-	}
-
-	for i := range m.createInputs {
-		m.createInputs[i], cmds[i] = m.createInputs[i].Update(msg)
+	} else {
+		for i := range m.createInputs {
+			m.createInputs[i], cmds[i] = m.createInputs[i].Update(msg)
+		}
 	}
 
 	return tea.Batch(cmds...)
@@ -165,6 +185,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusBarWidth = msg.Width
 		return m, nil
 
+	case spinner.TickMsg:
+		if m.loading {
+			var cmd tea.Cmd
+			m.spinner, cmd = m.spinner.Update(msg)
+			return m, cmd
+		}
+		return m, nil
+
+	case serviceResultMsg:
+		m.loading = false
+		m.servicePerformed = true
+		m.responseData = msg.responseData
+		m.service.url = msg.url
+		m.service.message = msg.message
+		m.service.lastErr = msg.err
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -181,51 +218,59 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter":
+			if m.loading {
+				return m, nil
+			}
+
 			if m.searchInputsState && m.searchInputs[0].Value() != "" && m.searchInputs[1].Value() != "" {
 				m.searchInputsState = false
-				// Perform the search
-				responseData, err := SearchRepository(m.service.ctx, m.service.client, m.searchInputs[0].Value(), m.searchInputs[1].Value())
-				if err != nil {
-					m.service.lastErr = err
-					switch {
-					case errors.Is(err, ErrSearchNotFound):
-						m.service.message = "Repository not found!"
-					default:
-						m.service.message = "Failed to search repository!"
+				m.loading = true
+				user := m.searchInputs[0].Value()
+				repo := m.searchInputs[1].Value()
+				ctx := m.service.ctx
+				client := m.service.client
+				return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
+					data, err := SearchRepository(ctx, client, user, repo)
+					msg := serviceResultMsg{responseData: data}
+					if err != nil {
+						msg.err = err
+						switch {
+						case errors.Is(err, ErrSearchNotFound):
+							msg.message = "Repository not found!"
+						default:
+							msg.message = "Failed to search repository!"
+						}
 					}
-					return m, nil
-				}
-				m.responseData = responseData
-				m.service.url = nil
-				m.service.lastErr = nil
-				m.service.message = ""
-				m.servicePerformed = true
-				return m, nil
+					return msg
+				})
 
 			} else if m.createInputsState && m.createInputs[0].Value() != "" && m.createInputs[1].Value() != "" {
 				m.createInputsState = false
-				// Perform the creation
-				res, err := CreateRepository(m.service.ctx, m.service.client, m.createInputs[0].Value(), m.createInputs[1].Value())
-				if err != nil {
-					m.service.lastErr = err
-					switch {
-					case errors.Is(err, ErrInvalidPrivateInput):
-						m.service.message = "Invalid input!"
-					case errors.Is(err, ErrRepoAlreadyExists):
-						m.service.message = "Repository already exists!"
-					case errors.Is(err, ErrRepoUnauthorized):
-						m.service.message = "Token lacks permission to create repositories!"
-					case errors.Is(err, ErrRepoCreateFailed):
-						m.service.message = "Repository creation failed!"
+				m.loading = true
+				repoName := m.createInputs[0].Value()
+				isPrivate := m.createInputs[1].Value()
+				ctx := m.service.ctx
+				client := m.service.client
+				return m, tea.Batch(m.spinner.Tick, func() tea.Msg {
+					url, err := CreateRepository(ctx, client, repoName, isPrivate)
+					msg := serviceResultMsg{url: url}
+					if err != nil {
+						msg.err = err
+						switch {
+						case errors.Is(err, ErrInvalidPrivateInput):
+							msg.message = "Invalid input!"
+						case errors.Is(err, ErrRepoAlreadyExists):
+							msg.message = "Repository already exists!"
+						case errors.Is(err, ErrRepoUnauthorized):
+							msg.message = "Token lacks permission to create repositories!"
+						case errors.Is(err, ErrRepoCreateFailed):
+							msg.message = "Repository creation failed!"
+						}
+					} else {
+						msg.message = "Repository created successfully!"
 					}
-				} else {
-					m.service.lastErr = nil
-					m.service.message = "Repository created successfully!"
-				}
-				m.service.url = res
-				m.responseData = nil
-				m.servicePerformed = true
-				return m, nil
+					return msg
+				})
 
 			} else if !m.tokenInputState {
 				if m.service.token == "" {
@@ -248,8 +293,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.service.message = ""
 					m.service.lastErr = nil
 					m.searchInputsState = true
+					m.focusIndex = 0
 					m.searchInputs[0].SetValue("")
 					m.searchInputs[1].SetValue("")
+					m.searchInputs[0].Focus()
+					m.searchInputs[1].Blur()
 					return m, nil
 
 				// Create Repository
@@ -257,8 +305,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.service.message = ""
 					m.service.lastErr = nil
 					m.createInputsState = true
+					m.focusIndex = 0
 					m.createInputs[0].SetValue("")
 					m.createInputs[1].SetValue("")
+					m.createInputs[0].Focus()
+					m.createInputs[1].Blur()
 					return m, nil
 				}
 			}
@@ -335,14 +386,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func titleASCII() string {
-	t, err := os.ReadFile("docs/titleascii.txt")
-	if err != nil {
-		return "Github CMD"
-	}
-
-	return string(t)
-}
+//go:embed docs/titleascii.txt
+var titleASCII string
 
 func (m Model) statusBarKeys() string {
 	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
@@ -353,7 +398,7 @@ func (m Model) View() string {
 	var sb strings.Builder
 
 	// Render main
-	sb.WriteString(tui.TitleStyle.Width(m.statusBarWidth).Render(titleASCII()))
+	sb.WriteString(tui.TitleStyle.Width(m.statusBarWidth).Render(titleASCII))
 	sb.WriteString("\n\n")
 	sb.WriteString(tui.SubtitleStyle.Width(m.statusBarWidth).Render("Welcome to Github CMD, a TUI for Github written in Golang."))
 	sb.WriteRune('\n')
@@ -370,6 +415,11 @@ func (m Model) View() string {
 		} else if m.createInputsState {
 			sb.WriteString("\n" + m.createInputs[0].View() + "\n" + m.createInputs[1].View() + "\n")
 		}
+	}
+
+	// Render loading spinner
+	if m.loading {
+		sb.WriteString("\n " + m.spinner.View() + " Loading...\n")
 	}
 
 	// Render error message
