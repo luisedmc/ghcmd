@@ -33,8 +33,8 @@ func OpenDB() (*Database, error) {
 }
 
 // GetToken retrieves the token from the database
-func (d *Database) GetToken(db *leveldb.DB) (string, error) {
-	token, err := db.Get([]byte("gh_token"), nil)
+func (d *Database) GetToken() (string, error) {
+	token, err := d.Conn.Get([]byte("gh_token"), nil)
 	if err != nil {
 		if errors.Is(err, leveldb.ErrNotFound) {
 			return "", nil
@@ -42,6 +42,5 @@ func (d *Database) GetToken(db *leveldb.DB) (string, error) {
 		return "", err
 	}
 
-	// log.Println("token: ", string(token))
 	return string(token), nil
 }

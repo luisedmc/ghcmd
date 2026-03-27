@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"golang.org/x/oauth2"
 )
+
+var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 // FetchToken validates a Github token and returns it with an error if invalid
 func FetchToken(githubKey string) (string, error) {
@@ -33,7 +36,7 @@ func TestToken(githubKey string) (int, error) {
 	}
 	req.Header.Set("Authorization", "token "+githubKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return 0, err
 	}
