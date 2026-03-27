@@ -7,22 +7,8 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/v53/github"
+	"github.com/luisedmc/ghcmd/model"
 )
-
-// Repository represents a Github repository
-type Repository struct {
-	Name        string
-	Owner       string
-	OwnerURL    string
-	Description string
-	URL         string
-	Stars       int
-	Forks       int
-	Language    string
-	OpenIssues  int
-	CreatedAt   string
-	License     string
-}
 
 // GithubClient returns a new Github client
 func GithubClient(tokenClient *http.Client) *github.Client {
@@ -30,7 +16,7 @@ func GithubClient(tokenClient *http.Client) *github.Client {
 }
 
 // SearchRepository performs a search for a specific repository from an user and returns the repository information
-func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) (*Repository, error) {
+func SearchRepository(ctx context.Context, githubClient *github.Client, user string, repositoryName string) (*model.Repository, error) {
 	repository, _, err := githubClient.Repositories.Get(ctx, user, repositoryName)
 	if err != nil {
 		var ghErr *github.ErrorResponse
@@ -44,7 +30,7 @@ func SearchRepository(ctx context.Context, githubClient *github.Client, user str
 		return nil, ErrSearchNotFound
 	}
 
-	repositoryData := &Repository{
+	repositoryData := &model.Repository{
 		Name:        repository.GetName(),
 		Owner:       repository.GetOwner().GetLogin(),
 		OwnerURL:    repository.GetOwner().GetHTMLURL(),

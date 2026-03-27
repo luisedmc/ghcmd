@@ -14,12 +14,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v53/github"
 	"github.com/luisedmc/ghcmd/db"
+	"github.com/luisedmc/ghcmd/model"
 	"github.com/luisedmc/ghcmd/tui"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type serviceResultMsg struct {
-	responseData *Repository
+	responseData *model.Repository
 	url          *string
 	message      string
 	err          error
@@ -40,7 +41,7 @@ type Model struct {
 
 	service          service
 	servicePerformed bool
-	responseData     *Repository
+	responseData     *model.Repository
 
 	tokenInput      textinput.Model
 	tokenInputState bool
@@ -431,20 +432,7 @@ func (m Model) View() string {
 	if m.servicePerformed {
 		// Search
 		if m.responseData != nil {
-			cardData := tui.RepositoryCard{
-				Name:        m.responseData.Name,
-				Owner:       m.responseData.Owner,
-				OwnerURL:    m.responseData.OwnerURL,
-				Description: m.responseData.Description,
-				URL:         m.responseData.URL,
-				Stars:       m.responseData.Stars,
-				Forks:       m.responseData.Forks,
-				Language:    m.responseData.Language,
-				OpenIssues:  m.responseData.OpenIssues,
-				CreatedAt:   m.responseData.CreatedAt,
-				License:     m.responseData.License,
-			}
-			sb.WriteString(tui.RenderRepoCard(cardData, m.statusBarWidth))
+			sb.WriteString(tui.RenderRepoCard(*m.responseData, m.statusBarWidth))
 			sb.WriteString("\n")
 		}
 

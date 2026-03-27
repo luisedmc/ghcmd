@@ -3,25 +3,12 @@ package tui
 import (
 	"fmt"
 	"strings"
+
+	"github.com/luisedmc/ghcmd/model"
 )
 
-// RepositoryCard holds repository data for rendering a styled card
-type RepositoryCard struct {
-	Name        string
-	Owner       string
-	OwnerURL    string
-	Description string
-	URL         string
-	Stars       int
-	Forks       int
-	Language    string
-	OpenIssues  int
-	CreatedAt   string
-	License     string
-}
-
 // RenderRepoCard returns a card for a repository search result
-func RenderRepoCard(data RepositoryCard, width int) string {
+func RenderRepoCard(data model.Repository, width int) string {
 	var sb strings.Builder
 
 	// Header -> 'repo name by owner'
