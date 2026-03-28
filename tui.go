@@ -16,7 +16,6 @@ import (
 	"github.com/luisedmc/ghcmd/db"
 	"github.com/luisedmc/ghcmd/model"
 	"github.com/luisedmc/ghcmd/tui"
-	"github.com/syndtr/goleveldb/leveldb"
 )
 
 type serviceResultMsg struct {
@@ -52,7 +51,7 @@ type Model struct {
 	searchInputsState bool
 	createInputsState bool
 
-	database *leveldb.DB
+	database *db.Database
 }
 
 type service struct {
@@ -77,7 +76,7 @@ func StartGHCMD() (Model, error) {
 
 	token, err := database.GetToken()
 	if err != nil {
-		database.Conn.Close()
+		database.Close()
 		return Model{}, fmt.Errorf("retrieving token: %w", err)
 	}
 
@@ -100,7 +99,7 @@ func StartGHCMD() (Model, error) {
 		service:      s,
 		searchInputs: tui.SearchInputs(),
 		createInputs: tui.CreateInputs(),
-		database:     database.Conn,
+		database:     database,
 	}
 
 	if token == "" {
@@ -320,7 +319,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			token, err := FetchToken(m.tokenInput.Value())
 			if err == nil {
-				if dbErr := m.database.Put([]byte("gh_token"), []byte(token), nil); dbErr != nil {
+				if dbErr := m.database.SetToken(token); dbErr != nil {
 					m.service.message = "Failed to save token!"
 					m.service.lastErr = dbErr
 					return m, nil

@@ -1,46 +1,47 @@
 package db
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
-
-	"github.com/syndtr/goleveldb/leveldb"
+	"strings"
 )
 
 type Database struct {
-	Conn *leveldb.DB
+	path string
 }
 
-// OpenDB opens (or creates) the database at the user's config directory
+// OpenDB creates the config directory if needed and returns a Database
+// that reads/writes the token from a plain file.
 func OpenDB() (*Database, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return nil, err
 	}
-	dbPath := filepath.Join(configDir, "ghcmd", "data")
-
-	if err := os.MkdirAll(filepath.Dir(dbPath), 0755); err != nil {
+	dir := filepath.Join(configDir, "ghcmd")
+	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, err
 	}
-
-	db, err := leveldb.OpenFile(dbPath, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Database{db}, nil
+	return &Database{path: filepath.Join(dir, "token")}, nil
 }
 
-// GetToken retrieves the token from the database
+// GetToken reads the stored GitHub token. Returns "" if no token exists.
 func (d *Database) GetToken() (string, error) {
-	token, err := d.Conn.Get([]byte("gh_token"), nil)
+	data, err := os.ReadFile(d.path)
 	if err != nil {
-		if errors.Is(err, leveldb.ErrNotFound) {
+		if os.IsNotExist(err) {
 			return "", nil
 		}
 		return "", err
 	}
+	return strings.TrimSpace(string(data)), nil
+}
 
-	return string(token), nil
+// SetToken writes the GitHub token to disk with owner-only permissions.
+func (d *Database) SetToken(token string) error {
+	return os.WriteFile(d.path, []byte(token), 0600)
+}
+
+// Close is a no-op kept for interface consistency.
+func (d *Database) Close() error {
+	return nil
 }
