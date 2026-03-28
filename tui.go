@@ -12,7 +12,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/google/go-github/v53/github"
+	"github.com/google/go-github/v84/github"
 	"github.com/luisedmc/ghcmd/db"
 	"github.com/luisedmc/ghcmd/model"
 	"github.com/luisedmc/ghcmd/tui"
