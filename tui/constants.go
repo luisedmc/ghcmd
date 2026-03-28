@@ -35,22 +35,33 @@ var (
 		Background: lipgloss.AdaptiveColor{Light: "#3c3836", Dark: "#3c3836"},
 	}
 
-	// List colors
-	TitleListStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#969696"}).
-			Padding(0, 0, 0, 2)
-	DescListStyle = TitleListStyle.Copy().Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#969696"})
+	// Menu card styles
+	MenuCardSelected = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(MainColor).
+				Padding(1, 2).
+				Width(35)
 
-	TitleListSelected = lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder(), false, false, false, true).
-				BorderForeground(lipgloss.AdaptiveColor{Light: "#FFFFFF", Dark: "#FFFFFF"}).
-				Foreground(lipgloss.AdaptiveColor{Light: "#00FFA2", Dark: "#00FFA2"}).
-				Padding(0, 0, 0, 1)
+	MenuCardUnselected = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#3c3836")).
+				Padding(1, 2).
+				Width(35)
 
-	DescListSelected = TitleListSelected.Copy().
-				Foreground(lipgloss.AdaptiveColor{Light: "#c8ded6", Dark: "#c8ded6"})
+	MenuCardTitleSelected = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(MainColor)
 
-	ListStyle = lipgloss.NewStyle().Margin(1, 2)
+	MenuCardTitleUnselected = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#969696"))
+
+	MenuCardDescSelected = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#c8ded6"))
+
+	MenuCardDescUnselected = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#969696"))
+
+	GridStyle = lipgloss.NewStyle().Margin(1, 2)
 
 	// Input colors
 	NoStyle      = lipgloss.NewStyle()

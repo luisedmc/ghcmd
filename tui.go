@@ -31,7 +31,7 @@ type Model struct {
 
 	help    help.Model
 	keys    tui.KeyMap
-	list    tui.CustomList
+	grid    tui.CardGrid
 	spinner spinner.Model
 	loading bool
 
@@ -93,7 +93,7 @@ func StartGHCMD() (Model, error) {
 	m := Model{
 		keys:         tui.KeyMaps(),
 		help:         help.New(),
-		list:         tui.CustomList{Choices: tui.Choices},
+		grid:         tui.CardGrid{Choices: tui.Choices},
 		spinner:      sp,
 		statusText:   "Valid Token",
 		statusBar:    tui.StatusBar(s.token, s.tokenStatus, s.status),
@@ -208,14 +208,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 
-		case "up", "k":
+		case "left", "h", "up", "k":
 			if !m.createInputsState && !m.searchInputsState {
-				m.list.CursorUp()
+				m.grid.CursorLeft()
 			}
 
-		case "down", "j":
+		case "right", "l", "down", "j":
 			if !m.createInputsState && !m.searchInputsState {
-				m.list.CursorDown()
+				m.grid.CursorRight()
 			}
 
 		case "enter":
@@ -288,7 +288,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					client := GithubClient(tc)
 					m.service.client = client
 				}
-				switch m.list.Cursor {
+				switch m.grid.Cursor {
 				// Search Repository
 				case 0:
 					m.service.message = ""
@@ -391,7 +391,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 var titleASCII string
 
 func (m Model) statusBarKeys() string {
-	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Up.Help().Key, m.keys.Up.Help().Desc, m.keys.Down.Help().Key, m.keys.Down.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
+	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Left.Help().Key, m.keys.Left.Help().Desc, m.keys.Right.Help().Key, m.keys.Right.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
 }
 
 // View returns the text UI to be output to the terminal
@@ -410,7 +410,7 @@ func (m Model) View() string {
 	} else {
 		sb.WriteString("\n")
 		// Render list of services
-		sb.WriteString(tui.ListStyle.Render(m.list.View()))
+		sb.WriteString("\n" + m.grid.View(m.statusBarWidth) + "\n")
 		if m.searchInputsState {
 			sb.WriteString("\n" + m.searchInputs[0].View() + "\n" + m.searchInputs[1].View() + "\n")
 		} else if m.createInputsState {

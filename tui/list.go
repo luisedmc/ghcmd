@@ -1,13 +1,13 @@
 package tui
 
 import (
-	"strings"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var (
 	Choices = []choice{
-		{title: "Search Repository", desc: "Search for an user repository from Github."},
-		{title: "Create Repository", desc: "Create a repository in your Github account."},
+		{title: "Search Repository", desc: "Search for an user repository from Github"},
+		{title: "Create Repository", desc: "Create a repository in your Github account"},
 	}
 )
 
@@ -20,38 +20,45 @@ func (c choice) Title() string       { return c.title }
 func (c choice) Description() string { return c.desc }
 func (c choice) FilterValue() string { return c.title }
 
-type CustomList struct {
+type CardGrid struct {
 	Choices []choice
 	Cursor  int
 }
 
-func (l *CustomList) CursorUp() {
-	if l.Cursor > 0 {
-		l.Cursor--
+func (g *CardGrid) CursorLeft() {
+	if g.Cursor > 0 {
+		g.Cursor--
 	}
 }
 
-func (l *CustomList) CursorDown() {
-	if l.Cursor < len(l.Choices)-1 {
-		l.Cursor++
+func (g *CardGrid) CursorRight() {
+	if g.Cursor < len(g.Choices)-1 {
+		g.Cursor++
 	}
 }
 
-func (l *CustomList) View() string {
-	var sb strings.Builder
+func (g *CardGrid) View(width int) string {
+	cards := make([]string, len(g.Choices))
 
-	for i, choice := range l.Choices {
-		title := TitleListStyle
-		description := DescListStyle
+	for i, c := range g.Choices {
+		cardStyle := MenuCardUnselected
+		titleStyle := MenuCardTitleUnselected
+		descStyle := MenuCardDescUnselected
 
-		if i == l.Cursor {
-			title = TitleListSelected
-			description = DescListSelected
+		if i == g.Cursor {
+			cardStyle = MenuCardSelected
+			titleStyle = MenuCardTitleSelected
+			descStyle = MenuCardDescSelected
 		}
 
-		sb.WriteString("  " + title.Render(choice.title) + "\n")
-		sb.WriteString("  " + description.Render(choice.desc) + "\n\n")
+		if i < len(g.Choices)-1 {
+			cardStyle = cardStyle.Copy().MarginRight(2)
+		}
+
+		content := titleStyle.Render(c.title) + "\n" + descStyle.Render(c.desc)
+		cards[i] = cardStyle.Render(content)
 	}
 
-	return sb.String()
+	row := lipgloss.JoinHorizontal(lipgloss.Top, cards...)
+	return lipgloss.PlaceHorizontal(width, lipgloss.Center, row)
 }
