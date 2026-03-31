@@ -16,11 +16,11 @@ var (
 	SubtitleStyle = lipgloss.NewStyle().
 			Align(lipgloss.Center).
 			Foreground(lipgloss.AdaptiveColor{Light: "#969696", Dark: "#969696"})
-	ErrorStyle = TitleStyle.Copy().
+	ErrorStyle = lipgloss.NewStyle().Inherit(TitleStyle).
 			Italic(false).
 			Align(lipgloss.Left).
 			Foreground(lipgloss.Color("#FF0000"))
-	AlertStyle = ErrorStyle.Copy().
+	AlertStyle = lipgloss.NewStyle().Inherit(ErrorStyle).
 			Foreground(lipgloss.Color("#FFA500"))
 
 	// Status bar colors
@@ -72,8 +72,7 @@ var (
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(MainColor).
 			Padding(1, 2).
-			MarginTop(1).
-			MarginLeft(2)
+			MarginTop(1)
 
 	CardHeaderStyle = lipgloss.NewStyle().
 			Bold(true).

@@ -25,6 +25,12 @@ type serviceResultMsg struct {
 	err          error
 }
 
+type userFetchedMsg struct {
+	user  *model.User
+	token string
+	err   error
+}
+
 type Model struct {
 	height int
 
@@ -56,9 +62,11 @@ type Model struct {
 
 type service struct {
 	ctx    context.Context
+	cancel context.CancelFunc
 	token  string
 	client *github.Client
 	status bool
+	user   *model.User
 
 	tokenStatus string
 	message     string
@@ -68,21 +76,24 @@ type service struct {
 
 // StartGHCMD initializes the TUI and returns the model
 func StartGHCMD() (Model, error) {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
 	database, err := db.OpenDB()
 	if err != nil {
+		cancel()
 		return Model{}, fmt.Errorf("opening database: %w", err)
 	}
 
 	token, err := database.GetToken()
 	if err != nil {
+		cancel()
 		database.Close()
 		return Model{}, fmt.Errorf("retrieving token: %w", err)
 	}
 
 	s := service{
-		ctx:   ctx,
-		token: token,
+		ctx:    ctx,
+		cancel: cancel,
+		token:  token,
 	}
 
 	sp := spinner.New()
@@ -113,6 +124,7 @@ func StartGHCMD() (Model, error) {
 
 // Close releases resources held by the Model.
 func (m Model) Close() error {
+	m.service.cancel()
 	return m.database.Close()
 }
 
@@ -172,8 +184,18 @@ func (m Model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) 
 	return m, tea.Batch(cmds...)
 }
 
+func fetchUserCmd(token string) tea.Cmd {
+	return func() tea.Msg {
+		_, user, err := FetchToken(token)
+		return userFetchedMsg{user: user, token: token, err: err}
+	}
+}
+
 // Init run any initial IO on program start
 func (m Model) Init() tea.Cmd {
+	if m.service.token != "" {
+		return tea.Batch(textinput.Blink, fetchUserCmd(m.service.token))
+	}
 	return textinput.Blink
 }
 
@@ -193,6 +215,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case userFetchedMsg:
+		if msg.err == nil && msg.user != nil {
+			m.service.user = msg.user
+			m.service.status = true
+			m.service.tokenStatus = "Valid Token"
+			m.statusText = "Valid Token"
+			m.statusBar = tui.StatusBar(m.service.token, m.service.tokenStatus, m.service.status)
+		} else if msg.err != nil {
+			m.service.token = ""
+			m.service.status = false
+
+			switch {
+			case errors.Is(msg.err, ErrTokenInvalid):
+				m.service.tokenStatus = "Invalid Token"
+			case errors.Is(msg.err, ErrTokenForbidden):
+				m.service.tokenStatus = "Token lacks permissions"
+			case errors.Is(msg.err, ErrTokenRateLimited):
+				m.service.tokenStatus = "Rate limited"
+			case errors.Is(msg.err, ErrTokenServerError):
+				m.service.tokenStatus = "GitHub server error"
+			default:
+				m.service.tokenStatus = "Error validating token"
+			}
+
+			m.statusText = ""
+			m.tokenInput = tui.TokenInput()
+			m.tokenInputState = true
+			m.statusBar = tui.StatusBar("", m.service.tokenStatus, false)
+		}
+		return m, nil
+
 	case serviceResultMsg:
 		m.loading = false
 		m.servicePerformed = true
@@ -205,6 +258,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
+			m.service.cancel()
 			return m, tea.Quit
 
 		case "left", "h", "up", "k":
@@ -317,7 +371,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tokenInputState = false
 			m.tokenInput.Blur()
 
-			token, err := FetchToken(m.tokenInput.Value())
+			token, user, err := FetchToken(m.tokenInput.Value())
 			if err == nil {
 				if dbErr := m.database.SetToken(token); dbErr != nil {
 					m.service.message = "Failed to save token!"
@@ -326,15 +380,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			m.service.token = token
+			m.service.user = user
 			m.service.status = err == nil
 
 			switch {
 			case errors.Is(err, ErrTokenEmpty):
 				m.service.tokenStatus = "Unwritten Token"
-			case errors.Is(err, ErrTokenTest):
-				m.service.tokenStatus = "Error validating token"
 			case errors.Is(err, ErrTokenInvalid):
 				m.service.tokenStatus = "Invalid Token"
+			case errors.Is(err, ErrTokenForbidden):
+				m.service.tokenStatus = "Token lacks permissions"
+			case errors.Is(err, ErrTokenRateLimited):
+				m.service.tokenStatus = "Rate limited"
+			case errors.Is(err, ErrTokenServerError):
+				m.service.tokenStatus = "GitHub server error"
+			case err != nil:
+				m.service.tokenStatus = "Error validating token"
 			default:
 				m.service.tokenStatus = "Valid Token"
 			}
@@ -344,6 +405,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.statusText = m.service.tokenStatus
 
 		case "esc":
+			if m.loading {
+				m.service.cancel()
+				ctx, cancel := context.WithCancel(context.Background())
+				m.service.ctx = ctx
+				m.service.cancel = cancel
+				m.service.client = nil
+				m.loading = false
+				return m, nil
+			}
+
 			if m.searchInputsState || m.createInputsState {
 				m.createInputsState = false
 				m.searchInputsState = false
@@ -407,7 +478,11 @@ func (m Model) View() string {
 	if m.tokenInputState && m.service.token == "" {
 		sb.WriteString("\n" + m.tokenInput.View() + "\n")
 	} else {
-		sb.WriteString("\n")
+		// Render user header (with "?" placeholders until user data loads)
+		gridRow := m.grid.RenderRow()
+		gridWidth := lipgloss.Width(gridRow)
+		header := tui.RenderHeader(m.service.user, gridWidth)
+		sb.WriteString("\n" + lipgloss.PlaceHorizontal(m.statusBarWidth, lipgloss.Center, header))
 		// Render list of services
 		sb.WriteString("\n" + m.grid.View(m.statusBarWidth) + "\n")
 		if m.searchInputsState {
@@ -431,7 +506,8 @@ func (m Model) View() string {
 	if m.servicePerformed {
 		// Search
 		if m.responseData != nil {
-			sb.WriteString(tui.RenderRepoCard(*m.responseData, m.statusBarWidth))
+			card := tui.RenderRepoCard(*m.responseData, m.statusBarWidth)
+			sb.WriteString(lipgloss.PlaceHorizontal(m.statusBarWidth, lipgloss.Center, card))
 			sb.WriteString("\n")
 		}
 

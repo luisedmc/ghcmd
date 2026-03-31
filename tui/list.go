@@ -6,7 +6,7 @@ import (
 
 var (
 	Choices = []choice{
-		{title: "Search Repository", desc: "Search for an user repository from Github"},
+		{title: "Search Repository", desc: "Search for a user repository from Github"},
 		{title: "Create Repository", desc: "Create a repository in your Github account"},
 	}
 )
@@ -37,8 +37,9 @@ func (g *CardGrid) CursorRight() {
 	}
 }
 
-func (g *CardGrid) View(width int) string {
-	cards := make([]string, len(g.Choices))
+// RenderRow returns the raw horizontal row of cards without centering.
+func (g *CardGrid) RenderRow() string {
+	parts := make([]string, 0, len(g.Choices)*2-1)
 
 	for i, c := range g.Choices {
 		cardStyle := MenuCardUnselected
@@ -51,14 +52,18 @@ func (g *CardGrid) View(width int) string {
 			descStyle = MenuCardDescSelected
 		}
 
-		if i < len(g.Choices)-1 {
-			cardStyle = cardStyle.Copy().MarginRight(2)
-		}
-
 		content := titleStyle.Render(c.title) + "\n" + descStyle.Render(c.desc)
-		cards[i] = cardStyle.Render(content)
+		parts = append(parts, cardStyle.Render(content))
+
+		if i < len(g.Choices)-1 {
+			parts = append(parts, "  ")
+		}
 	}
 
-	row := lipgloss.JoinHorizontal(lipgloss.Top, cards...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
+}
+
+func (g *CardGrid) View(width int) string {
+	row := g.RenderRow()
 	return lipgloss.PlaceHorizontal(width, lipgloss.Center, row)
 }
