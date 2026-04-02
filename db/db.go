@@ -18,14 +18,14 @@ func OpenDB() (*Database, error) {
 		return nil, err
 	}
 	dir := filepath.Join(configDir, "ghcmd")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		return nil, err
 	}
 	return &Database{path: filepath.Join(dir, "token")}, nil
 }
 
-// GetToken reads the stored GitHub token. Returns "" if no token exists.
-func (d *Database) GetToken() (string, error) {
+// Token reads the stored GitHub token. Returns "" if no token exists.
+func (d *Database) Token() (string, error) {
 	data, err := os.ReadFile(d.path)
 	if err != nil {
 		if os.IsNotExist(err) {

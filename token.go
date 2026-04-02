@@ -7,8 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/luisedmc/ghcmd/model"
 	"golang.org/x/oauth2"
+
+	"github.com/luisedmc/ghcmd/model"
 )
 
 type githubUserResponse struct {
@@ -19,7 +20,8 @@ type githubUserResponse struct {
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
-// FetchToken validates a Github token and returns it with the authenticated user data.
+// FetchToken validates a Github token and returns it with the authenticated
+// user data.
 func FetchToken(githubKey string) (string, *model.User, error) {
 	if githubKey == "" {
 		return "", nil, ErrTokenEmpty
@@ -78,14 +80,14 @@ func TestToken(githubKey string) (int, *model.User, error) {
 	return resp.StatusCode, user, nil
 }
 
-// Token returns a token source
+// TokenSource returns an OAuth2 static token source.
 func TokenSource(tokenInput string) oauth2.TokenSource {
 	return oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: tokenInput},
 	)
 }
 
-// TokenClient returns a HTTP Client from a context and a token source
+// TokenClient returns a HTTP Client from a context and a token source.
 func TokenClient(ctx context.Context, ts oauth2.TokenSource) *http.Client {
 	return oauth2.NewClient(ctx, ts)
 }

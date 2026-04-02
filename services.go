@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/v84/github"
+
 	"github.com/luisedmc/ghcmd/model"
 )
 

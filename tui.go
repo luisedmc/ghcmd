@@ -13,6 +13,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/google/go-github/v84/github"
+
 	"github.com/luisedmc/ghcmd/db"
 	"github.com/luisedmc/ghcmd/model"
 	"github.com/luisedmc/ghcmd/tui"
@@ -83,7 +84,7 @@ func StartGHCMD() (Model, error) {
 		return Model{}, fmt.Errorf("opening database: %w", err)
 	}
 
-	token, err := database.GetToken()
+	token, err := database.Token()
 	if err != nil {
 		cancel()
 		database.Close()
@@ -129,19 +130,19 @@ func (m Model) Close() error {
 }
 
 func (m Model) updateInputs(msg tea.Msg, isSearch bool) tea.Cmd {
-	cmds := make([]tea.Cmd, 2)
-
 	if isSearch {
+		cmds := make([]tea.Cmd, len(m.searchInputs))
 		for i := range m.searchInputs {
 			m.searchInputs[i], cmds[i] = m.searchInputs[i].Update(msg)
 		}
+		return tea.Batch(cmds...)
 	} else {
+		cmds := make([]tea.Cmd, len(m.createInputs))
 		for i := range m.createInputs {
 			m.createInputs[i], cmds[i] = m.createInputs[i].Update(msg)
 		}
+		return tea.Batch(cmds...)
 	}
-
-	return tea.Batch(cmds...)
 }
 
 func (m Model) tabKey(msg tea.KeyMsg, inputs []textinput.Model, focusIndex int) (tea.Model, tea.Cmd) {
@@ -351,7 +352,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.searchInputs[0].SetValue("")
 					m.searchInputs[1].SetValue("")
 					m.searchInputs[0].Focus()
+					m.searchInputs[0].PromptStyle = tui.FocusedStyle
+					m.searchInputs[0].TextStyle = tui.FocusedStyle
 					m.searchInputs[1].Blur()
+					m.searchInputs[1].PromptStyle = tui.NoStyle
+					m.searchInputs[1].TextStyle = tui.NoStyle
 					return m, nil
 
 				// Create Repository
@@ -363,7 +368,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.createInputs[0].SetValue("")
 					m.createInputs[1].SetValue("")
 					m.createInputs[0].Focus()
+					m.createInputs[0].PromptStyle = tui.FocusedStyle
+					m.createInputs[0].TextStyle = tui.FocusedStyle
 					m.createInputs[1].Blur()
+					m.createInputs[1].PromptStyle = tui.NoStyle
+					m.createInputs[1].TextStyle = tui.NoStyle
 					return m, nil
 				}
 			}
@@ -418,8 +427,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.searchInputsState || m.createInputsState {
 				m.createInputsState = false
 				m.searchInputsState = false
-				for i := range 2 {
+				for i := range len(m.searchInputs) {
 					m.searchInputs[i].SetValue("")
+				}
+				for i := range len(m.createInputs) {
 					m.createInputs[i].SetValue("")
 				}
 				return m, nil
@@ -445,23 +456,50 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	m.tokenInput, _ = m.tokenInput.Update(msg)
+	var cmds []tea.Cmd
 
-	var cmd tea.Cmd
-	if m.searchInputsState {
-		cmd = m.updateInputs(msg, true)
-	} else {
-		cmd = m.updateInputs(msg, false)
+	if m.tokenInputState {
+		var cmd tea.Cmd
+		m.tokenInput, cmd = m.tokenInput.Update(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	}
 
-	return m, cmd
+	if m.searchInputsState {
+		if cmd := m.updateInputs(msg, true); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	} else if m.createInputsState {
+		if cmd := m.updateInputs(msg, false); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	}
+
+	return m, tea.Batch(cmds...)
 }
 
 //go:embed docs/titleascii.txt
 var titleASCII string
 
 func (m Model) statusBarKeys() string {
-	return fmt.Sprintf("%s %s | %s %s | %s %s | %s %s | %s %s", m.keys.Left.Help().Key, m.keys.Left.Help().Desc, m.keys.Right.Help().Key, m.keys.Right.Help().Desc, m.keys.Tab.Help().Key, m.keys.Tab.Help().Desc, m.keys.Esc.Help().Key, m.keys.Esc.Help().Desc, m.keys.Quit.Help().Key, m.keys.Quit.Help().Desc)
+	helps := []struct {
+		key  string
+		desc string
+	}{
+		{key: m.keys.Left.Help().Key, desc: m.keys.Left.Help().Desc},
+		{key: m.keys.Right.Help().Key, desc: m.keys.Right.Help().Desc},
+		{key: m.keys.Tab.Help().Key, desc: m.keys.Tab.Help().Desc},
+		{key: m.keys.Esc.Help().Key, desc: m.keys.Esc.Help().Desc},
+		{key: m.keys.Quit.Help().Key, desc: m.keys.Quit.Help().Desc},
+	}
+
+	parts := make([]string, 0, len(helps))
+	for _, help := range helps {
+		parts = append(parts, help.key+" "+help.desc)
+	}
+
+	return strings.Join(parts, " | ")
 }
 
 // View returns the text UI to be output to the terminal

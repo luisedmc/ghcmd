@@ -7,6 +7,7 @@ import (
 // TokenInput defines a text input for the token
 func TokenInput() textinput.Model {
 	ti := textinput.New()
+	ti.EchoMode = textinput.EchoPassword
 	ti.Placeholder = "your api token (you can paste it)"
 	ti.Focus()
 	ti.CharLimit = 40
