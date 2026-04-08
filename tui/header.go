@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/luisedmc/ghcmd/model"
+	"github.com/luisedmc/ghcmd/domain"
 )
 
 var (
@@ -23,7 +23,7 @@ var (
 
 // RenderHeader renders the authenticated user header with a divider.
 // The divider width matches the provided gridWidth.
-func RenderHeader(user *model.User, gridWidth int) string {
+func RenderHeader(user *domain.User, gridWidth int) string {
 	login := "?"
 	repos := "?"
 	if user != nil {

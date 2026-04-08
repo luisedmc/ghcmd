@@ -1,4 +1,4 @@
-package model
+package domain
 
 // User represents an authenticated Github user.
 type User struct {

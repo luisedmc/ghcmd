@@ -1,4 +1,4 @@
-package main
+package domain
 
 import "errors"
 
@@ -18,8 +18,7 @@ var (
 	ErrSearchNotFound = errors.New("repository not found")
 
 	// Create errors
-	ErrRepoAlreadyExists   = errors.New("repository already exists")
-	ErrRepoCreateFailed    = errors.New("repository creation failed")
-	ErrRepoUnauthorized    = errors.New("token lacks permission to create repositories")
-	ErrInvalidPrivateInput = errors.New("invalid private input")
+	ErrRepoAlreadyExists = errors.New("repository already exists")
+	ErrRepoCreateFailed  = errors.New("repository creation failed")
+	ErrRepoUnauthorized  = errors.New("token lacks permission to create repositories")
 )

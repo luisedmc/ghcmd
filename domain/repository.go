@@ -1,4 +1,4 @@
-package model
+package domain
 
 // Repository represents a Github repository
 type Repository struct {
