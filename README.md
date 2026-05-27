@@ -4,6 +4,8 @@
 
 **A Terminal User Interface for Github written in Golang**
 
+<img src="/docs/new.png" width="700" alt="ghcmd terminal UI">
+
 </div>
 
 ## About
@@ -59,14 +61,3 @@ In the current version, you can:
 | `Create Repository` | Create a repository in your GitHub account    |
 
 For now, it is a work in progress and only supports a few commands. I will be always trying to add more features and improve the existing ones.
-
-## Screenshots
-
-<div align=center>
-    This is how a successful search looks like<br>
-    <img src="/docs/example.gif" width=700 height=400>
-</div>
-
-## License
-
-- [MIT](https://raw.githubusercontent.com/luisedmc/ghcmd/master/LICENSE)
