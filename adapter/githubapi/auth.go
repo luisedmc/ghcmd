@@ -1,4 +1,4 @@
-package main
+package githubapi
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"github.com/luisedmc/ghcmd/model"
+	"github.com/luisedmc/ghcmd/domain"
 )
 
 type githubUserResponse struct {
@@ -20,70 +20,60 @@ type githubUserResponse struct {
 
 var httpClient = &http.Client{Timeout: 10 * time.Second}
 
-// FetchToken validates a Github token and returns it with the authenticated
-// user data.
-func FetchToken(githubKey string) (string, *model.User, error) {
-	if githubKey == "" {
-		return "", nil, ErrTokenEmpty
-	}
+// GithubAuth implements service.AuthProvider using the GitHub REST API.
+type GithubAuth struct{}
 
-	_, user, err := TestToken(githubKey)
-	if err != nil {
-		return "", nil, err
-	}
-
-	return githubKey, user, nil
+func NewGithubAuth() *GithubAuth {
+	return &GithubAuth{}
 }
 
-// TestToken performs a request to the Github API to check if the token is valid
-// and returns the authenticated user data on success.
-func TestToken(githubKey string) (int, *model.User, error) {
+// ValidateToken checks whether a GitHub token is valid and returns the
+// authenticated user on success.
+func (g *GithubAuth) ValidateToken(token string) (*domain.User, error) {
 	req, err := http.NewRequest("GET", "https://api.github.com/user", nil)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
-	req.Header.Set("Authorization", "token "+githubKey)
+	req.Header.Set("Authorization", "token "+token)
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		switch resp.StatusCode {
 		case http.StatusUnauthorized:
-			return resp.StatusCode, nil, ErrTokenInvalid
+			return nil, domain.ErrTokenInvalid
 		case http.StatusForbidden:
-			return resp.StatusCode, nil, ErrTokenForbidden
+			return nil, domain.ErrTokenForbidden
 		case http.StatusTooManyRequests:
-			return resp.StatusCode, nil, ErrTokenRateLimited
+			return nil, domain.ErrTokenRateLimited
 		default:
 			if resp.StatusCode >= http.StatusInternalServerError {
-				return resp.StatusCode, nil, ErrTokenServerError
+				return nil, domain.ErrTokenServerError
 			}
-			return resp.StatusCode, nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
+			return nil, fmt.Errorf("unexpected status code %d", resp.StatusCode)
 		}
 	}
 
 	var ghUser githubUserResponse
 	if err := json.NewDecoder(resp.Body).Decode(&ghUser); err != nil {
-		return resp.StatusCode, nil, err
+		return nil, err
 	}
 
-	user := &model.User{
+	return &domain.User{
 		Login:       ghUser.Login,
 		Name:        ghUser.Name,
 		PublicRepos: ghUser.PublicRepos,
-	}
-
-	return resp.StatusCode, user, nil
+	}, nil
 }
 
 // TokenSource returns an OAuth2 static token source.
-func TokenSource(tokenInput string) oauth2.TokenSource {
+func TokenSource(token string) oauth2.TokenSource {
 	return oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: tokenInput},
+		&oauth2.Token{AccessToken: token},
 	)
 }
 

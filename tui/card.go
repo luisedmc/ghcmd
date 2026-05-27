@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/luisedmc/ghcmd/model"
+	"github.com/luisedmc/ghcmd/domain"
 )
 
 // RenderRepoCard returns a card for a repository search result
-func RenderRepoCard(data model.Repository, width int) string {
+func RenderRepoCard(data domain.Repository, width int) string {
 	var sb strings.Builder
 
 	// Header -> 'repo name by owner'
